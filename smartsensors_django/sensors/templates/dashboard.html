@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شرکت هوشمندفناوران برتر ایرانیان</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2E7D32;
+            --primary-light: #4CAF50;
+            --primary-dark: #1B5E20;
+            --secondary: #0277BD;
+            --secondary-light: #03A9F4;
+            --accent: #FF9800;
+            --background: #F5F7FA;
+            --card-bg: #FFFFFF;
+            --text-primary: #263238;
+            --text-secondary: #546E7A;
+            --border: #E0E0E0;
+            --success: #4CAF50;
+
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Smart Sensors Dashboard</title>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                <style>
+                    body {
+                        font-family: 'Inter', Arial, sans-serif;
+                        background: #f4f6fb;
+                        margin: 0;
+                        color: #222;
+                    }
+                    .dashboard-container {
+                        max-width: 1400px;
+                        margin: 0 auto;
+                        padding: 32px 16px;
+                    }
+                    .dashboard-header {
+                        text-align: center;
+                        margin-bottom: 32px;
+                    }
+                    .dashboard-header h1 {
+                        font-size: 2.5rem;
+                        font-weight: 600;
+                        color: #1976d2;
+                    }
+                    .dashboard-header .status {
+                        font-size: 1.1rem;
+                        color: #388e3c;
+                        margin-top: 8px;
+                    }
+                    .sensor-cards {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+                        gap: 24px;
+                        margin-bottom: 40px;
+                    }
+                    .sensor-card {
+                        background: #fff;
+                        border-radius: 14px;
+                        box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+                        padding: 24px 20px 20px 20px;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: flex-start;
+                    }
+                    .sensor-title {
+                        font-size: 1.3rem;
+                        font-weight: 600;
+                        color: #1976d2;
+                        margin-bottom: 12px;
+                    }
+                    .sensor-metrics {
+                        width: 100%;
+                        margin-bottom: 10px;
+                    }
+                    .metric-row {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding: 7px 0;
+                        border-bottom: 1px solid #f0f0f0;
+                    }
+                    .metric-label {
+                        font-weight: 500;
+                        color: #555;
+                    }
+                    .metric-value {
+                        font-weight: 600;
+                        color: #222;
+                    }
+                    .chart-container {
+                        margin-top: 18px;
+                        width: 100%;
+                    }
+                    .footer {
+                        text-align: center;
+                        margin-top: 40px;
+                        color: #888;
+                        font-size: 0.95rem;
+                    }
+                    @media (max-width: 900px) {
+                        .sensor-cards {
+                            grid-template-columns: 1fr;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="dashboard-container">
+                    <div class="dashboard-header">
+                        <h1>Smart Sensors Dashboard</h1>
+                        <div class="status" id="networkStatus">Loading...</div>
+                    </div>
+                    <div class="sensor-cards">
+                        <div class="sensor-card" id="airQualityCard">
+                            <div class="sensor-title">Air Quality</div>
+                            <div class="sensor-metrics">
+                                <div class="metric-row"><span class="metric-label">PM1</span><span class="metric-value" id="pm1Value">--</span></div>
+                                <div class="metric-row"><span class="metric-label">PM2.5</span><span class="metric-value" id="pm25Value">--</span></div>
+                                <div class="metric-row"><span class="metric-label">PM10</span><span class="metric-value" id="pm10Value">--</span></div>
+                                <div class="metric-row"><span class="metric-label">CO2</span><span class="metric-value" id="co2Value">--</span></div>
+                                <div class="metric-row"><span class="metric-label">VOC</span><span class="metric-value" id="vocValue">--</span></div>
+                                <div class="metric-row"><span class="metric-label">CH2O</span><span class="metric-value" id="ch2oValue">--</span></div>
+                                <div class="metric-row"><span class="metric-label">CO</span><span class="metric-value" id="coValue">--</span></div>
+                                <div class="metric-row"><span class="metric-label">O3</span><span class="metric-value" id="o3Value">--</span></div>
+                                <div class="metric-row"><span class="metric-label">NO2</span><span class="metric-value" id="no2Value">--</span></div>
+                                <div class="metric-row"><span class="metric-label">Temperature</span><span class="metric-value" id="tempValue">--</span></div>
+                                <div class="metric-row"><span class="metric-label">Humidity</span><span class="metric-value" id="humidityValue">--</span></div>
+                            </div>
+                            <div class="chart-container"><canvas id="pm25Chart"></canvas></div>
+                        </div>
+                        <div class="sensor-card" id="mr007Card">
+                            <div class="sensor-title">MR007 Combustible Gas</div>
+                            <div class="sensor-metrics">
+                                <div class="metric-row"><span class="metric-label">Voltage</span><span class="metric-value" id="mr007Voltage">--</span></div>
+                                <div class="metric-row"><span class="metric-label">Raw Value</span><span class="metric-value" id="mr007Raw">--</span></div>
+                                <div class="metric-row"><span class="metric-label">LEL Concentration</span><span class="metric-value" id="mr007LEL">--</span></div>
+                            </div>
+                            <div class="chart-container"><canvas id="mr007Chart"></canvas></div>
+                        </div>
+                        <div class="sensor-card" id="me4so2Card">
+                            <div class="sensor-title">ME4-SO2 Sulfur Dioxide</div>
+                            <div class="sensor-metrics">
+                                <div class="metric-row"><span class="metric-label">Voltage</span><span class="metric-value" id="me4Voltage">--</span></div>
+                                <div class="metric-row"><span class="metric-label">Raw Value</span><span class="metric-value" id="me4Raw">--</span></div>
+                                <div class="metric-row"><span class="metric-label">Current (μA)</span><span class="metric-value" id="me4Current">--</span></div>
+                                <div class="metric-row"><span class="metric-label">SO2 Concentration</span><span class="metric-value" id="me4SO2">--</span></div>
+                            </div>
+                            <div class="chart-container"><canvas id="me4so2Chart"></canvas></div>
+                        </div>
+                        <div class="sensor-card" id="ze40Card">
+                            <div class="sensor-title">ZE40 TVOC Sensor</div>
+                            <div class="sensor-metrics">
+                                <div class="metric-row"><span class="metric-label">TVOC (ppb)</span><span class="metric-value" id="ze40TVOCppb">--</span></div>
+                                <div class="metric-row"><span class="metric-label">TVOC (ppm)</span><span class="metric-value" id="ze40TVOCppm">--</span></div>
+                                <div class="metric-row"><span class="metric-label">DAC Voltage</span><span class="metric-value" id="ze40DACVoltage">--</span></div>
+                                <div class="metric-row"><span class="metric-label">DAC PPM</span><span class="metric-value" id="ze40DACPPM">--</span></div>
+                                <div class="metric-row"><span class="metric-label">UART Data Valid</span><span class="metric-value" id="ze40UARTValid">--</span></div>
+                                <div class="metric-row"><span class="metric-label">Analog Data Valid</span><span class="metric-value" id="ze40AnalogValid">--</span></div>
+                            </div>
+                            <div class="chart-container"><canvas id="ze40Chart"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="footer">
+                        <div>IP: <span id="ipAddress">--</span></div>
+                        <div>Last Update: <span id="lastUpdate">--</span></div>
+                    </div>
+                </div>
+                <script>
+                    // Chart.js chart instances
+                    let pm25Chart, mr007Chart, me4so2Chart, ze40Chart;
+                    function updateSensorData() {
+                        fetch('/data')
+                            .then(response => response.json())
+                            .then(data => {
+                                document.getElementById('ipAddress').textContent = data.ip_address;
+                                document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+                                const statusElem = document.getElementById('networkStatus');
+                                statusElem.textContent = 'Network: ' + (data.network_mode ? data.network_mode.toUpperCase() : '--');
+                                // Air Quality
+                                if (data.air_quality) {
+                                    document.getElementById('pm1Value').textContent = data.air_quality.pm1;
+                                    document.getElementById('pm25Value').textContent = data.air_quality.pm25;
+                                    document.getElementById('pm10Value').textContent = data.air_quality.pm10;
+                                    document.getElementById('co2Value').textContent = data.air_quality.co2;
+                                    document.getElementById('vocValue').textContent = data.air_quality.voc;
+                                    document.getElementById('ch2oValue').textContent = data.air_quality.ch2o;
+                                    document.getElementById('coValue').textContent = data.air_quality.co;
+                                    document.getElementById('o3Value').textContent = data.air_quality.o3;
+                                    document.getElementById('no2Value').textContent = data.air_quality.no2;
+                                    document.getElementById('tempValue').textContent = data.air_quality.temperature;
+                                    document.getElementById('humidityValue').textContent = data.air_quality.humidity;
+                                }
+                                // MR007
+                                if (data.mr007) {
+                                    document.getElementById('mr007Voltage').textContent = data.mr007.voltage;
+                                    document.getElementById('mr007Raw').textContent = data.mr007.rawValue;
+                                    document.getElementById('mr007LEL').textContent = data.mr007.lel_concentration;
+                                }
+                                // ME4SO2
+                                if (data.me4_so2) {
+                                    document.getElementById('me4Voltage').textContent = data.me4_so2.voltage;
+                                    document.getElementById('me4Raw').textContent = data.me4_so2.rawValue;
+                                    document.getElementById('me4Current').textContent = data.me4_so2.current_ua;
+                                    document.getElementById('me4SO2').textContent = data.me4_so2.so2_concentration;
+                                }
+                                // ZE40
+                                if (data.ze40) {
+                                    document.getElementById('ze40TVOCppb').textContent = data.ze40.tvoc_ppb;
+                                    document.getElementById('ze40TVOCppm').textContent = data.ze40.tvoc_ppm;
+                                    document.getElementById('ze40DACVoltage').textContent = data.ze40.dac_voltage;
+                                    document.getElementById('ze40DACPPM').textContent = data.ze40.dac_ppm;
+                                    document.getElementById('ze40UARTValid').textContent = data.ze40.uart_data_valid;
+                                    document.getElementById('ze40AnalogValid').textContent = data.ze40.analog_data_valid;
+                                }
+                                // --- Chart updates ---
+                                if (data.history) {
+                                    // Air Quality Chart (PM2.5)
+                                    if (data.history.air_quality) {
+                                        const now = new Date();
+                                        const last24h = data.history.air_quality.filter(row => {
+                                            if (!row.timestamp) return false;
+                                            const t = new Date(row.timestamp);
+                                            return (now - t) <= 24*60*60*1000;
+                                        });
+                                        const labels = last24h.map(row => {
+                                            const t = new Date(row.timestamp);
+                                            return t.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+                                        }).reverse();
+                                        const pm25Data = last24h.map(row => row.pm25).reverse();
+                                        if (!pm25Chart) {
+                                            pm25Chart = new Chart(document.getElementById('pm25Chart').getContext('2d'), {
+                                                type: 'line',
+                                                data: {labels: labels, datasets: [{label: 'PM2.5 (μg/m³)', data: pm25Data, borderColor: '#1976d2', backgroundColor: 'rgba(25,118,210,0.1)', fill: true, tension: 0.2}]},
+                                                options: {responsive:true, plugins:{legend:{display:true}, title:{display:true, text:'PM2.5 (Last 24h)'}}, scales:{x:{title:{display:true,text:'Time'}},y:{title:{display:true,text:'μg/m³'}}}}
+                                            });
+                                        } else {
+                                            pm25Chart.data.labels = labels;
+                                            pm25Chart.data.datasets[0].data = pm25Data;
+                                            pm25Chart.update();
+                                        }
+                                    }
+                                    // MR007 Chart (LEL Concentration)
+                                    if (data.history.mr007) {
+                                        const now = new Date();
+                                        const last24h = data.history.mr007.filter(row => {
+                                            if (!row.timestamp) return false;
+                                            const t = new Date(row.timestamp);
+                                            return (now - t) <= 24*60*60*1000;
+                                        });
+                                        const labels = last24h.map(row => {
+                                            const t = new Date(row.timestamp);
+                                            return t.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+                                        }).reverse();
+                                        const lelData = last24h.map(row => row.lel_concentration).reverse();
+                                        if (!mr007Chart) {
+                                            mr007Chart = new Chart(document.getElementById('mr007Chart').getContext('2d'), {
+                                                type: 'line',
+                                                data: {labels: labels, datasets: [{label: 'LEL (%)', data: lelData, borderColor: '#388e3c', backgroundColor: 'rgba(56,142,60,0.1)', fill: true, tension: 0.2}]},
+                                                options: {responsive:true, plugins:{legend:{display:true}, title:{display:true, text:'LEL Concentration (Last 24h)'}}, scales:{x:{title:{display:true,text:'Time'}},y:{title:{display:true,text:'%'}}}}
+                                            });
+                                        } else {
+                                            mr007Chart.data.labels = labels;
+                                            mr007Chart.data.datasets[0].data = lelData;
+                                            mr007Chart.update();
+                                        }
+                                    }
+                                    // ME4SO2 Chart (SO2 Concentration)
+                                    if (data.history.me4_so2) {
+                                        const now = new Date();
+                                        const last24h = data.history.me4_so2.filter(row => {
+                                            if (!row.timestamp) return false;
+                                            const t = new Date(row.timestamp);
+                                            return (now - t) <= 24*60*60*1000;
+                                        });
+                                        const labels = last24h.map(row => {
+                                            const t = new Date(row.timestamp);
+                                            return t.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+                                        }).reverse();
+                                        const so2Data = last24h.map(row => row.so2_concentration).reverse();
+                                        if (!me4so2Chart) {
+                                            me4so2Chart = new Chart(document.getElementById('me4so2Chart').getContext('2d'), {
+                                                type: 'line',
+                                                data: {labels: labels, datasets: [{label: 'SO2 (ppm)', data: so2Data, borderColor: '#f57c00', backgroundColor: 'rgba(245,124,0,0.1)', fill: true, tension: 0.2}]},
+                                                options: {responsive:true, plugins:{legend:{display:true}, title:{display:true, text:'SO2 Concentration (Last 24h)'}}, scales:{x:{title:{display:true,text:'Time'}},y:{title:{display:true,text:'ppm'}}}}
+                                            });
+                                        } else {
+                                            me4so2Chart.data.labels = labels;
+                                            me4so2Chart.data.datasets[0].data = so2Data;
+                                            me4so2Chart.update();
+                                        }
+                                    }
+                                    // ZE40 Chart (TVOC ppm)
+                                    if (data.history.ze40) {
+                                        const now = new Date();
+                                        const last24h = data.history.ze40.filter(row => {
+                                            if (!row.timestamp) return false;
+                                            const t = new Date(row.timestamp);
+                                            return (now - t) <= 24*60*60*1000;
+                                        });
+                                        const labels = last24h.map(row => {
+                                            const t = new Date(row.timestamp);
+                                            return t.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+                                        }).reverse();
+                                        const tvocData = last24h.map(row => row.tvoc_ppm).reverse();
+                                        if (!ze40Chart) {
+                                            ze40Chart = new Chart(document.getElementById('ze40Chart').getContext('2d'), {
+                                                type: 'line',
+                                                data: {labels: labels, datasets: [{label: 'TVOC (ppm)', data: tvocData, borderColor: '#0288d1', backgroundColor: 'rgba(2,136,209,0.1)', fill: true, tension: 0.2}]},
+                                                options: {responsive:true, plugins:{legend:{display:true}, title:{display:true, text:'TVOC (Last 24h)'}}, scales:{x:{title:{display:true,text:'Time'}},y:{title:{display:true,text:'ppm'}}}}
+                                            });
+                                        } else {
+                                            ze40Chart.data.labels = labels;
+                                            ze40Chart.data.datasets[0].data = tvocData;
+                                            ze40Chart.update();
+                                        }
+                                    }
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error fetching data:', error);
+                            });
+                    }
+                    updateSensorData();
+                    setInterval(updateSensorData, 2000);
+                </script>
+            </body>
+            </html>
+            }
+        });
+
+        updateSensorData();
+        setInterval(updateSensorData, 2000);
+    </script>
+</body>
+</html>
