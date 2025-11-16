@@ -26,7 +26,6 @@
 #define MR007_PIN 5
 #define ME4_SO2_PIN 9
 
-// UPDATED: LED and Relay pins
 #define LED_PIN 2
 #define RELAY_PIN 48
 #define BUTTON_PIN 16
@@ -44,9 +43,9 @@ extern const char* WIFI_PASS;
 extern const char* AP_SSID;
 extern const char* AP_PASS;
 
-// Task Configuration
-#define ETH_TASK_STACK_SIZE 8192
-#define SENSOR_TASK_STACK_SIZE 12288
+// Task Configuration - Optimized for ESP32-S3
+#define ETH_TASK_STACK_SIZE 20480
+#define SENSOR_TASK_STACK_SIZE 20480
 #define ETH_TASK_PRIORITY 2
 #define SENSOR_TASK_PRIORITY 1
 
@@ -56,9 +55,7 @@ extern const char* AP_PASS;
 #define ZPHS01B_READ_INTERVAL 5000
 #define MR007_READ_INTERVAL 2000
 #define ME4_SO2_READ_INTERVAL 2000
-#define LED_TIMEOUT 10000  // 10 seconds timeout
-// #define INITIAL_PREHEAT 0
-#define SENSOR_WARMUP_TIME 18  // ADDED: 3 minutes warmup for ZPHS01B 180000 
+#define SENSOR_WARMUP_TIME 180000
 
 // ZE40 Configuration
 #define FRAME_TIMEOUT 150
@@ -81,15 +78,16 @@ extern const char* AP_PASS;
 // Connection Management
 #define MAX_CONCURRENT_CONNECTIONS 3
 #define CONNECTION_TIMEOUT_MS 5000
+#define LED_TIMEOUT 5000
 
 // Debug Configuration
 #ifdef DEBUG_SERIAL_ENABLED
-#define DEBUG_PRINT(x) do { if (Serial) Serial.print(x); } while(0)
-#define DEBUG_PRINTLN(x) do { if (Serial) Serial.println(x); } while(0)
-#define DEBUG_PRINTF(format, ...) do { if (Serial) Serial.printf(format, ##__VA_ARGS__); } while(0)
+#define DEBUG_PRINT(x) Serial.print(x)
+#define DEBUG_PRINTLN(x) Serial.println(x)
+#define DEBUG_PRINTF(format, ...) Serial.printf(format, ##__VA_ARGS__)
 #else
 #define DEBUG_PRINT(x)
-#define DEBUG_PRINTLN(x) 
+#define DEBUG_PRINTLN(x)
 #define DEBUG_PRINTF(format, ...)
 #endif
 

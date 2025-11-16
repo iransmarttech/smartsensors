@@ -3,54 +3,60 @@
 
 #include <Arduino.h>
 #include "config.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 
+// Unified sensor data structure
 struct SharedSensorData {
-    // ZE40 Sensor Data
-    float ze40_tvoc_ppb;
-    float ze40_tvoc_ppm;
-    float ze40_dac_voltage;
-    float ze40_dac_ppm;
-    bool ze40_uart_data_valid;
-    bool ze40_analog_data_valid;
+    // ZE40 Sensor
+    float ze40_tvoc_ppb = 0.0;
+    float ze40_tvoc_ppm = 0.0;
+    float ze40_dac_voltage = 0.0;
+    float ze40_dac_ppm = 0.0;
+    bool ze40_uart_valid = false;
+    bool ze40_analog_valid = false;
+    bool ze40_preheat_complete = false;
 
-    // ZPHS01B Sensor Data
-    float zphs01b_pm1;
-    float zphs01b_pm25;
-    float zphs01b_pm10;
-    float zphs01b_co2;
-    float zphs01b_voc;
-    float zphs01b_ch2o;
-    float zphs01b_co;
-    float zphs01b_o3;
-    float zphs01b_no2;
-    float zphs01b_temperature;
-    float zphs01b_humidity;
-    bool zphs01b_data_valid;
+    // ZPHS01B Sensor
+    float zphs01b_pm1 = 0.0;
+    float zphs01b_pm25 = 0.0;
+    float zphs01b_pm10 = 0.0;
+    float zphs01b_co2 = 0.0;
+    float zphs01b_voc = 0.0;
+    float zphs01b_ch2o = 0.0;
+    float zphs01b_co = 0.0;
+    float zphs01b_o3 = 0.0;
+    float zphs01b_no2 = 0.0;
+    float zphs01b_temperature = 0.0;
+    float zphs01b_humidity = 0.0;
+    bool zphs01b_valid = false;
 
-    // MR007 Sensor Data
-    float mr007_voltage;
-    int mr007_rawValue;
-    float mr007_lel_concentration;
-    bool mr007_data_valid;
+    // MR007 Sensor
+    float mr007_voltage = 0.0;
+    int mr007_raw = 0;
+    float mr007_lel = 0.0;
+    bool mr007_valid = false;
 
-    // ME4-SO2 Sensor Data
-    float me4so2_voltage;
-    int me4so2_rawValue;
-    float me4so2_current_ua;
-    float me4so2_so2_concentration;
-    bool me4so2_data_valid;
+    // ME4-SO2 Sensor
+    float me4so2_voltage = 0.0;
+    int me4so2_raw = 0;
+    float me4so2_current = 0.0;
+    float me4so2_so2 = 0.0;
+    bool me4so2_valid = false;
 
-    // Network Information
-    char ip_address[16];
-    bool network_ready;
-    unsigned long last_update;
+    // Network status
+    char ip_address[16] = "0.0.0.0";
+    bool network_ready = false;
+    unsigned long last_update = 0;
 };
 
 extern SharedSensorData sharedData;
 extern SemaphoreHandle_t dataMutex;
 
+// Thread-safe data access functions
 void initSharedData();
-bool takeDataMutex(TickType_t timeout = portMAX_DELAY);
-void giveDataMutex();
+bool lockData(int timeout_ms = 5000);
+void unlockData();
+bool isDataReady();
 
 #endif

@@ -4,8 +4,8 @@
 #include <Arduino.h>
 #include "config.h"
 
-// CHANGED: Renamed to avoid conflict with ESP32 NetworkManager
-class CustomNetworkManager {
+// Renamed to avoid conflict with ESP32 NetworkManager
+class SensorNetworkManager {
 public:
     #ifdef ETHERNET_ENABLED
     bool initEthernet();
@@ -16,25 +16,22 @@ public:
     void startAccessPoint();
     #endif
 
-    void update();
-    bool isConnected();
     String getIPAddress();
-
     bool isEthernetActive() { return ethActive; }
     bool isWifiActive() { return wifiActive; }
     bool isAPActive() { return apActive; }
-
-    #ifdef MDNS_ENABLED
-    void initmDNS();
-    #endif
 
 private:
     bool ethActive = false;
     bool wifiActive = false;
     bool apActive = false;
+
+    #ifdef MDNS_ENABLED
+    void initmDNS();
+    #endif
 };
 
-// CHANGED: Updated extern declaration
-extern CustomNetworkManager networkManager;
+// Updated extern declaration
+extern SensorNetworkManager networkManager;
 
 #endif

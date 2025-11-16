@@ -16,17 +16,33 @@ uint8_t mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 #include <ESPmDNS.h>
 #endif
 
-// CHANGED: Updated to CustomNetworkManager
-CustomNetworkManager networkManager;
+// Updated to SensorNetworkManager
+SensorNetworkManager networkManager;
 
 #ifdef ETHERNET_ENABLED
-bool CustomNetworkManager::initEthernet() {
+bool SensorNetworkManager::initEthernet() {
     DEBUG_PRINTLN("Initializing Ethernet...");
 
+    // CRITICAL: Disable interrupts during SPI initialization to prevent conflicts
+    portMUX_TYPE ethMux = portMUX_INITIALIZER_UNLOCKED;
+    portENTER_CRITICAL(&ethMux);
+    
+    // Initialize SPI with proper configuration for ESP32-S3
     SPI.begin(ETH_SCK_PIN, ETH_MISO_PIN, ETH_MOSI_PIN, ETH_CS_PIN);
+    
+    portEXIT_CRITICAL(&ethMux);
+    
+    // Delay for SPI stabilization
+    vTaskDelay(pdMS_TO_TICKS(200));
+    
+    DEBUG_PRINTLN("Initializing W5500 chip...");
     Ethernet.init(ETH_CS_PIN);
+    
+    // Additional delay before DHCP
+    vTaskDelay(pdMS_TO_TICKS(200));
 
-    if (Ethernet.begin(mac)) {
+    DEBUG_PRINTLN("Starting DHCP...");
+    if (Ethernet.begin(mac, 10000)) {
         DEBUG_PRINT("Ethernet connected. IP: ");
         DEBUG_PRINTLN(Ethernet.localIP());
         ethActive = true;
@@ -38,7 +54,8 @@ bool CustomNetworkManager::initEthernet() {
         #endif
 
         #ifdef MDNS_ENABLED
-        initmDNS();
+        DEBUG_PRINTLN("Note: mDNS not supported over Ethernet on ESP32");
+        DEBUG_PRINTLN("      Use IP address or configure router DNS");
         #endif
 
         return true;
@@ -50,7 +67,7 @@ bool CustomNetworkManager::initEthernet() {
 #endif
 
 #ifdef WIFI_FALLBACK_ENABLED
-bool CustomNetworkManager::initWiFi() {
+bool SensorNetworkManager::initWiFi() {
     DEBUG_PRINTLN("Initializing WiFi...");
 
     WiFi.disconnect(true);
@@ -79,7 +96,7 @@ bool CustomNetworkManager::initWiFi() {
     return false;
 }
 
-void CustomNetworkManager::startAccessPoint() {
+void SensorNetworkManager::startAccessPoint() {
     DEBUG_PRINTLN("Starting Access Point...");
 
     WiFi.disconnect(true);
@@ -97,15 +114,7 @@ void CustomNetworkManager::startAccessPoint() {
 }
 #endif
 
-void CustomNetworkManager::update() {
-    // Network maintenance
-}
-
-bool CustomNetworkManager::isConnected() {
-    return ethActive || wifiActive || apActive;
-}
-
-String CustomNetworkManager::getIPAddress() {
+String SensorNetworkManager::getIPAddress() {
     if (ethActive) {
         #ifdef ETHERNET_ENABLED
         return Ethernet.localIP().toString();
@@ -123,12 +132,39 @@ String CustomNetworkManager::getIPAddress() {
 }
 
 #ifdef MDNS_ENABLED
-void CustomNetworkManager::initmDNS() {
-    if (MDNS.begin(HOSTNAME)) {
-        MDNS.addService("http", "tcp", 80);
-        DEBUG_PRINT("mDNS started: ");
-        DEBUG_PRINT(HOSTNAME);
-        DEBUG_PRINTLN(".local");
+void SensorNetworkManager::initmDNS() {
+    DEBUG_PRINTLN("Starting mDNS responder...");
+    DEBUG_PRINT("Hostname: ");
+    DEBUG_PRINTLN(HOSTNAME);
+    
+    if (!MDNS.begin(HOSTNAME)) {
+        DEBUG_PRINTLN("✗ ERROR: mDNS.begin() failed!");
+        DEBUG_PRINTLN("Possible reasons:");
+        DEBUG_PRINTLN("  - Hostname already in use");
+        DEBUG_PRINTLN("  - Invalid hostname format");
+        DEBUG_PRINTLN("  - Network not ready");
+        return;
     }
+    
+    // Add HTTP service advertisement
+    if (MDNS.addService("http", "tcp", 80)) {
+        DEBUG_PRINTLN("✓ HTTP service added to mDNS");
+    } else {
+        DEBUG_PRINTLN("✗ Failed to add HTTP service");
+    }
+    
+    // Add additional service information
+    MDNS.addServiceTxt("http", "tcp", "board", "ESP32-S3");
+    MDNS.addServiceTxt("http", "tcp", "project", "Air Quality Monitor");
+    
+    DEBUG_PRINTLN("=============================================================");
+    DEBUG_PRINTLN("✓ mDNS responder started successfully");
+    DEBUG_PRINTLN("=============================================================");
+    DEBUG_PRINT("Access via hostname: http://");
+    DEBUG_PRINT(HOSTNAME);
+    DEBUG_PRINTLN(".local/");
+    DEBUG_PRINT("Access via IP:       http://");
+    DEBUG_PRINTLN(getIPAddress());
+    DEBUG_PRINTLN("=============================================================");
 }
 #endif

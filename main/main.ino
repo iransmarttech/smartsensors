@@ -1,24 +1,35 @@
 #include "config.h"
-#include "ze40_sensor.h"
-#include "zphs01b_sensor.h"
-#include "mr007_sensor.h"    
-#include "me4_so2_sensor.h"  
-#include "network_manager.h"
-#include "web_server.h"
+#include "shared_data.h"
 #include "task_manager.h"
 
 void setup() {
-    #ifdef DEBUG_SERIAL_ENABLED
+    // Initialize serial with sufficient delay
     Serial.begin(115200);
-    delay(1000);
+    delay(3000);
+    
     DEBUG_PRINTLN("Air Quality Monitor");
     DEBUG_PRINTLN("ZE40 TVOC + ZPHS01B Air Quality + MR007 Combustible + ME4-SO2");
     DEBUG_PRINTLN("=============================================================");
-    #endif
+
+    // Initialize shared data FIRST - this creates the mutex
+    initSharedData();
     
+    // Wait for mutex initialization to complete
+    delay(1000);
+    
+    // Verify mutex is ready
+    if (!isDataReady()) {
+        DEBUG_PRINTLN("FATAL ERROR: Shared data initialization failed!");
+        while(1) {
+            delay(1000);
+        }
+    }
+    
+    // Create tasks - this starts the system
     taskManager.createTasks();
 }
 
 void loop() {
+    // All work is done in FreeRTOS tasks
     vTaskDelete(NULL);
 }
