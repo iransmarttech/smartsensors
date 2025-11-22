@@ -3,6 +3,13 @@
 
 #include <Arduino.h>
 
+// ============================================================================
+// SECURITY: Import credentials from separate file
+// ============================================================================
+// credentials.h is NOT committed to git (in .gitignore)
+// Use credentials_template.h as a template
+#include "credentials.h"
+
 // Feature Configuration
 #define ETHERNET_ENABLED
 #define WIFI_FALLBACK_ENABLED  
@@ -37,11 +44,17 @@
 #define ETH_MOSI_PIN 13
 
 // Network Configuration
-extern const char* HOSTNAME;
-extern const char* WIFI_SSID;
-extern const char* WIFI_PASS;
-extern const char* AP_SSID;
-extern const char* AP_PASS;
+// Credentials are now imported from credentials.h (not in git)
+// AP SSID will be generated dynamically with device MAC address
+
+// Web Authentication
+extern const char* WEB_ADMIN_USERNAME;
+extern const char* WEB_ADMIN_PASSWORD;
+extern const char* API_ACCESS_TOKEN;
+
+// Django Backend Configuration
+#define DJANGO_ENABLED
+extern const char* DJANGO_SERVER_URL;  // e.g., "http://192.168.1.100:8000/api/sensors"
 
 // Task Configuration - Optimized for ESP32-S3
 #define ETH_TASK_STACK_SIZE 20480

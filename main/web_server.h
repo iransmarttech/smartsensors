@@ -17,22 +17,29 @@ class EthernetServer;
 #endif
 
 #include "network_manager.h"
+#include "web_auth.h"
 
 // Connection management - removed to prevent pointer issues
 // Each connection is now handled immediately without tracking
 
-class WebServer {
+class SensorWebServer {
 public:
     void init();
     void handleEthernetClient();
     void handleWiFiClient();
 
 private:
-    void sendMainPage(Client &client);
-    void sendJSONData(Client &client);
+    void sendMainPage(Client &client, bool authenticated);
+    void sendJSONData(Client &client, bool authenticated);
     void handleHTTPRequest(Client &client);
+    void sendUnauthorized(Client &client);
+    void sendForbidden(Client &client);
+    void sendSecurityHeaders(Client &client);
+    bool checkAuthentication(const String& authHeader);
+    bool checkAPIToken(const String& tokenHeader);
     
     volatile int activeClients = 0;
+    unsigned long lastRateLimitCleanup = 0;
     
     #ifdef ETHERNET_ENABLED
     EthernetServer* ethServer = nullptr;
@@ -43,7 +50,7 @@ private:
     #endif
 };
 
-extern WebServer webServer;
+extern SensorWebServer webServer;
 
 #endif
 

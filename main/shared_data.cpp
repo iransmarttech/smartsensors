@@ -5,6 +5,10 @@ SharedSensorData sharedData;
 SemaphoreHandle_t dataMutex = NULL;
 bool dataInitialized = false;
 
+#ifdef DJANGO_ENABLED
+DjangoClient djangoClient;
+#endif
+
 // Static storage for mutex to prevent heap issues
 static StaticSemaphore_t mutexBuffer;
 

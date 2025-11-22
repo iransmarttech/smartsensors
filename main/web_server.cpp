@@ -1,7 +1,9 @@
 #include "web_server.h"
 #include "config.h"
+#include "credentials.h"
 #include "shared_data.h"
 #include <Arduino.h>
+#include <mbedtls/base64.h>
 
 #ifdef WEB_SERVER_ENABLED
 
@@ -10,16 +12,38 @@ const char HTTP_CACHE_HEADER[] PROGMEM =
     "HTTP/1.1 200 OK\r\n"
     "Content-Type: text/html\r\n"
     "Cache-Control: public, max-age=3600\r\n"  // Cache HTML for 1 hour
+    "X-Frame-Options: DENY\r\n"  // Security: prevent clickjacking
+    "X-Content-Type-Options: nosniff\r\n"  // Security: prevent M    return (token == API_ACCESS_TOKEN);
+}
+
+void SensorWebServer::handleHTTPRequest(Client &client) {sniffing
     "Connection: close\r\n\r\n";
 
 const char HTTP_NO_CACHE_HEADER[] PROGMEM = 
     "HTTP/1.1 200 OK\r\n"
     "Content-Type: application/json\r\n"
-    "Access-Control-Allow-Origin: *\r\n"
+    "Access-Control-Allow-Origin: http://localhost\r\n"  // Security: restrict CORS
     "Cache-Control: no-cache, no-store, must-revalidate\r\n"  // Never cache JSON
     "Pragma: no-cache\r\n"
     "Expires: 0\r\n"
+    "X-Content-Type-Options: nosniff\r\n"  // Security header
     "Connection: close\r\n\r\n";
+
+const char HTTP_UNAUTHORIZED[] PROGMEM = 
+    "HTTP/1.1 401 Unauthorized\r\n"
+    "WWW-Authenticate: Basic realm=\"Smart Sensor System\"\r\n"
+    "Content-Type: text/html\r\n"
+    "Cache-Control: no-cache\r\n"
+    "Connection: close\r\n\r\n"
+    "<!DOCTYPE html><html><head><title>401 Unauthorized</title></head>"
+    "<body><h1>401 Unauthorized</h1><p>Authentication required.</p></body></html>";
+
+const char HTTP_FORBIDDEN[] PROGMEM = 
+    "HTTP/1.1 403 Forbidden\r\n"
+    "Content-Type: text/html\r\n"
+    "Connection: close\r\n\r\n"
+    "<!DOCTYPE html><html><head><title>403 Forbidden</title></head>"
+    "<body><h1>403 Forbidden</h1><p>Rate limit exceeded.</p></body></html>";
 
 // Static HTML content (without HTTP headers - we'll add them separately)
 const char MAIN_PAGE[] PROGMEM = R"=====(<!DOCTYPE html>
@@ -344,10 +368,14 @@ const char MAIN_PAGE[] PROGMEM = R"=====(<!DOCTYPE html>
 </html>
 )=====";
 
-WebServer webServer;
+SensorWebServer webServer;
 
-void WebServer::init() {
+void SensorWebServer::init() {
     DEBUG_PRINTLN("Initializing web server...");
+    
+    // Initialize authentication manager
+    WebAuthManager::init();
+    lastRateLimitCleanup = millis();
     
     #ifdef ETHERNET_ENABLED
     // Allocate on heap with placement new to control construction timing
@@ -365,6 +393,7 @@ void WebServer::init() {
         ethServer->begin();
         
         DEBUG_PRINTLN("✓ Ethernet HTTP server started on port 80");
+        DEBUG_PRINTLN("✓ Web authentication enabled");
         
         // Final stabilization delay
         vTaskDelay(pdMS_TO_TICKS(500));
@@ -374,7 +403,7 @@ void WebServer::init() {
     #endif
 }
 
-void WebServer::handleEthernetClient() {
+void SensorWebServer::handleEthernetClient() {
     #ifdef ETHERNET_ENABLED
     if (ethServer == nullptr) {
         DEBUG_PRINTLN("ERROR: ethServer is nullptr!");
@@ -403,7 +432,7 @@ void WebServer::handleEthernetClient() {
     #endif
 }
 
-void WebServer::handleWiFiClient() {
+void SensorWebServer::handleWiFiClient() {
     #ifdef WIFI_FALLBACK_ENABLED
     if (wifiServer == nullptr) {
         return;
@@ -424,6 +453,73 @@ void WebServer::handleWiFiClient() {
     #endif
 }
 
+void SensorWebServer::sendUnauthorized(Client &client) {
+    client.print(FPSTR(HTTP_UNAUTHORIZED));
+    DEBUG_PRINTLN("Sent 401 Unauthorized");
+}
+
+void SensorWebServer::sendForbidden(Client &client) {
+    client.print(FPSTR(HTTP_FORBIDDEN));
+    DEBUG_PRINTLN("Sent 403 Forbidden (Rate Limited)");
+}
+
+bool SensorWebServer::checkAuthentication(const String& authHeader) {
+    if (authHeader.length() == 0) {
+        return false;
+    }
+
+    // Check if it's Basic authentication
+    if (!authHeader.startsWith("Basic ")) {
+        return false;
+    }
+
+    // Extract Base64 encoded credentials
+    String encodedCreds = authHeader.substring(6); // Remove "Basic "
+    
+    // Decode Base64 using mbedtls
+    size_t outputLen;
+    
+    // First call to get required buffer size
+    mbedtls_base64_decode(NULL, 0, &outputLen,
+                          (const unsigned char*)encodedCreds.c_str(), encodedCreds.length());
+    
+    // Allocate buffer and decode
+    unsigned char decoded[outputLen + 1];
+    int ret = mbedtls_base64_decode(decoded, outputLen, &outputLen,
+                                     (const unsigned char*)encodedCreds.c_str(), encodedCreds.length());
+    
+    if (ret != 0) {
+        return false;  // Decode failed
+    }
+    
+    decoded[outputLen] = '\0';
+    String decodedCreds = String((char*)decoded);
+
+    // Expected format: username:password
+    int separatorIndex = decodedCreds.indexOf(':');
+    if (separatorIndex == -1) {
+        return false;
+    }
+
+    String username = decodedCreds.substring(0, separatorIndex);
+    String password = decodedCreds.substring(separatorIndex + 1);
+
+    // Constant-time comparison to prevent timing attacks
+    bool usernameMatch = (username == WEB_ADMIN_USERNAME);
+    bool passwordMatch = (password == WEB_ADMIN_PASSWORD);
+
+    return (usernameMatch && passwordMatch);
+}
+
+bool SensorWebServer::checkAPIToken(const String& tokenHeader) {
+    if (tokenHeader.length() == 0) {
+        return false;
+    }
+    
+    // Constant-time comparison
+    return (tokenHeader == API_ACCESS_TOKEN);
+}
+
 void WebServer::handleHTTPRequest(Client &client) {
     if (xPortInIsrContext()) {
         client.stop();
@@ -434,6 +530,9 @@ void WebServer::handleHTTPRequest(Client &client) {
     
     unsigned long startTime = millis();
     String request = "";
+    String authHeader = "";
+    String apiTokenHeader = "";
+    String clientIP = "";
     
     while (client.connected() && (millis() - startTime < 2000)) {
         if (client.available()) {
@@ -452,13 +551,89 @@ void WebServer::handleHTTPRequest(Client &client) {
     
     DEBUG_PRINTF("Request: %s\n", request.substring(0, 50).c_str());
 
-    if (request.indexOf("GET / ") != -1 || request.indexOf("GET /index") != -1) {
-        DEBUG_PRINTLN("Sending main page");
-        sendMainPage(client);
+    // Extract client IP (for rate limiting)
+    #ifdef ETHERNET_ENABLED
+    EthernetClient* ethClient = dynamic_cast<EthernetClient*>(&client);
+    if (ethClient) {
+        IPAddress ip = ethClient->remoteIP();
+        clientIP = String(ip[0]) + "." + String(ip[1]) + "." + 
+                   String(ip[2]) + "." + String(ip[3]);
     }
-    else if (request.indexOf("GET /data") != -1) {
-        DEBUG_PRINTLN("Sending JSON data");
-        sendJSONData(client);
+    #endif
+    #ifdef WIFI_FALLBACK_ENABLED
+    if (clientIP.length() == 0) {
+        WiFiClient* wifiClient = dynamic_cast<WiFiClient*>(&client);
+        if (wifiClient) {
+            IPAddress ip = wifiClient->remoteIP();
+            clientIP = String(ip[0]) + "." + String(ip[1]) + "." + 
+                       String(ip[2]) + "." + String(ip[3]);
+        }
+    }
+    #endif
+
+    // Rate limiting check (only if we got IP)
+    if (clientIP.length() > 0) {
+        // Periodically clean old rate limit records
+        if (millis() - lastRateLimitCleanup > 60000) {
+            WebAuthManager::clearRateLimitRecords();
+            lastRateLimitCleanup = millis();
+        }
+        
+        if (!WebAuthManager::checkRateLimit(clientIP)) {
+            DEBUG_PRINTF("Rate limit exceeded for IP: %s\n", clientIP.c_str());
+            sendForbidden(client);
+            client.stop();
+            return;
+        }
+    }
+
+    // Extract Authorization header
+    int authStart = request.indexOf("Authorization: ");
+    if (authStart != -1) {
+        int authEnd = request.indexOf("\r\n", authStart);
+        authHeader = request.substring(authStart + 15, authEnd);
+    }
+
+    // Extract X-API-Token header
+    int tokenStart = request.indexOf("X-API-Token: ");
+    if (tokenStart != -1) {
+        int tokenEnd = request.indexOf("\r\n", tokenStart);
+        apiTokenHeader = request.substring(tokenStart + 13, tokenEnd);
+    }
+
+    // Check if this is a data endpoint (requires API token or basic auth)
+    bool isDataEndpoint = (request.indexOf("GET /data") != -1);
+    bool isMainPage = (request.indexOf("GET / ") != -1 || request.indexOf("GET /index") != -1);
+    
+    // Authentication logic
+    bool authenticated = false;
+    
+    if (isDataEndpoint) {
+        // Data endpoint: Accept either API token or Basic Auth
+        authenticated = checkAPIToken(apiTokenHeader) || checkAuthentication(authHeader);
+    } else if (isMainPage) {
+        // Main page: Require Basic Auth
+        authenticated = checkAuthentication(authHeader);
+    }
+
+    // Handle endpoints
+    if (isMainPage) {
+        if (!authenticated) {
+            DEBUG_PRINTLN("Unauthorized access to main page");
+            sendUnauthorized(client);
+        } else {
+            DEBUG_PRINTLN("Sending main page (authenticated)");
+            sendMainPage(client, true);
+        }
+    }
+    else if (isDataEndpoint) {
+        if (!authenticated) {
+            DEBUG_PRINTLN("Unauthorized access to data endpoint");
+            sendUnauthorized(client);
+        } else {
+            DEBUG_PRINTLN("Sending JSON data (authenticated)");
+            sendJSONData(client, true);
+        }
     }
     else {
         DEBUG_PRINTLN("404 Not Found");
@@ -470,7 +645,12 @@ void WebServer::handleHTTPRequest(Client &client) {
     }
 }
 
-void WebServer::sendMainPage(Client &client) {
+void SensorWebServer::sendMainPage(Client &client, bool authenticated) {
+    if (!authenticated) {
+        sendUnauthorized(client);
+        return;
+    }
+    
     // Send HTTP header with cache control FIRST
     client.print(FPSTR(HTTP_CACHE_HEADER));
     
@@ -498,8 +678,13 @@ void WebServer::sendMainPage(Client &client) {
     DEBUG_PRINTLN("✓ HTML page sent successfully (will be cached by browser)");
 }
 
-void WebServer::sendJSONData(Client &client) {
+void SensorWebServer::sendJSONData(Client &client, bool authenticated) {
     vTaskDelay(1);
+    
+    if (!authenticated) {
+        sendUnauthorized(client);
+        return;
+    }
     
     if (!lockData(1000)) {
         client.print(FPSTR(HTTP_NO_CACHE_HEADER));

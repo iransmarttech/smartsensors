@@ -1,68 +1,89 @@
 import React, { useState, useEffect } from "react";
 import SensorCardWithChart from "../components/SensorCardWithChart";
 import { BarChart3 } from "lucide-react";
+import logger from "../utils/logger";
+import { getSensorDataUrl, getPollingInterval } from "../config";
+
+// API Configuration from centralized config
+const API_BASE_URL = getSensorDataUrl();
+const POLLING_INTERVAL = getPollingInterval('sensor_data');
 
 function AirQualityDashboard() {
   const [data, setData] = useState({});
+  const [history, setHistory] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // تابع ساده برای تولید داده رندوم
-  const generateRandomData = () => {
-    return {
-      pm1: Math.floor(Math.random() * 50) + 10,
-      pm25: Math.floor(Math.random() * 100) + 20,
-      pm10: Math.floor(Math.random() * 150) + 30,
-      co2: Math.floor(Math.random() * 500) + 400,
-      co: (Math.random() * 10).toFixed(1),
-      o3: (Math.random() * 0.1).toFixed(2),
-      no2: (Math.random() * 0.05).toFixed(3),
-      temperature: (Math.random() * 40 + 10).toFixed(1),
-      humidity: Math.floor(Math.random() * 60) + 30,
-    };
-  };
-
-  // تولید داده تاریخی ساده
-  const generateChartData = (field) => {
-    const dataPoints = [];
-
-    for (let i = 0; i < 10; i++) {
-      let value;
-
-      if (field === "temperature") {
-        value = (Math.random() * 40 + 10).toFixed(1);
-      } else if (field === "co") {
-        value = (Math.random() * 10).toFixed(1);
-      } else if (field === "o3") {
-        value = (Math.random() * 0.1).toFixed(2);
-      } else if (field === "no2") {
-        value = (Math.random() * 0.05).toFixed(3);
-      } else if (field === "pm1") {
-        value = Math.floor(Math.random() * 50) + 10;
-      } else if (field === "pm25") {
-        value = Math.floor(Math.random() * 100) + 20;
-      } else if (field === "pm10") {
-        value = Math.floor(Math.random() * 150) + 30;
-      } else if (field === "co2") {
-        value = Math.floor(Math.random() * 500) + 400;
-      } else {
-        value = Math.floor(Math.random() * 60) + 30;
+  // Fetch data from Django API
+  const fetchSensorData = async () => {
+    const startTime = Date.now();
+    
+    try {
+      logger.info("AirQualityDashboard", "Fetching sensor data from API");
+      
+      const response = await fetch(`${API_BASE_URL}/data`);
+      const responseTime = Date.now() - startTime;
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-
-      dataPoints.push({
-        time: `${i + 1}`,
-        value: parseFloat(value),
-      });
+      
+      const result = await response.json();
+      
+      logger.logAPICall("/data", "GET", response.status, responseTime);
+      
+      // Extract air quality data
+      if (result.air_quality) {
+        setData(result.air_quality);
+        logger.info("AirQualityDashboard", "Air quality data updated", {
+          pm25: result.air_quality.pm25,
+          temperature: result.air_quality.temperature
+        });
+      }
+      
+      // Extract historical data for charts
+      if (result.history && result.history.air_quality) {
+        setHistory(result.history.air_quality);
+      }
+      
+      setLoading(false);
+      setError(null);
+    } catch (err) {
+      const responseTime = Date.now() - startTime;
+      logger.error("AirQualityDashboard", "Failed to fetch sensor data", err);
+      logger.logAPICall("/data", "GET", 0, responseTime);
+      
+      console.error("Error fetching sensor data:", err);
+      setError(err.message);
+      setLoading(false);
     }
-
-    return dataPoints;
   };
 
-  // بروزرسانی هر ثانیه
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setData(generateRandomData());
-    }, 1000);
+  // تولید داده تاریخی از داده‌های واقعی
+  const generateChartData = (field) => {
+    if (!history || history.length === 0) {
+      return [];
+    }
+    
+    // Get last 10 records and reverse to show oldest first
+    return history
+      .slice(0, 10)
+      .reverse()
+      .map((record, index) => ({
+        time: `${index + 1}`,
+        value: parseFloat(record[field] || 0),
+      }));
+  };
 
-    return () => clearInterval(interval);
+  // بروزرسانی هر 2 ثانیه
+  useEffect(() => {
+    logger.info("AirQualityDashboard", "Component mounted, starting data fetch");
+    fetchSensorData();
+    const interval = setInterval(fetchSensorData, POLLING_INTERVAL);
+    return () => {
+      logger.info("AirQualityDashboard", "Component unmounting, stopping data fetch");
+      clearInterval(interval);
+    };
   }, []);
 
   const sensors = [
@@ -138,10 +159,20 @@ function AirQualityDashboard() {
           <BarChart3 className="ml-3 w-7 h-7 text-secondary font-Vazirmatn" />
           کیفیت هوا - نمایش زنده
         </h2>
-        <div className="text-[12px] mobile:text-sm text-green-600 bg-green-50 px-4 py-2 rounded-full border border-green-200 font-Vazirmatn-medium text-center">
-          ● در حال به روزرسانی
+        <div className={`text-[12px] mobile:text-sm px-4 py-2 rounded-full border font-Vazirmatn-medium text-center ${
+          loading ? 'text-yellow-600 bg-yellow-50 border-yellow-200' :
+          error ? 'text-red-600 bg-red-50 border-red-200' :
+          'text-green-600 bg-green-50 border-green-200'
+        }`}>
+          ● {loading ? 'در حال بارگذاری...' : error ? 'خطا در اتصال' : 'در حال به روزرسانی'}
         </div>
       </div>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 font-Vazirmatn text-center">
+          خطا در دریافت اطلاعات: {error}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
         {sensors.map((sensor) => (

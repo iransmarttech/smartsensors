@@ -1,0 +1,211 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                     SMART SENSORS - CONFIGURATION SYSTEM                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          CONFIGURATION FILES                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐ │
+│  │   DJANGO (Python)│      │  ESP32 (C/C++)   │      │  FRONTEND (JS)   │ │
+│  ├──────────────────┤      ├──────────────────┤      ├──────────────────┤ │
+│  │   config.py      │      │    config.h      │      │   config.js      │ │
+│  │                  │      │                  │      │                  │ │
+│  │ DJANGO_URL =     │      │ DJANGO_SERVER_IP │      │ BASE_URL:        │ │
+│  │ "192.168.1.100"  │      │ "192.168.1.100"  │      │ "192.168.1.100"  │ │
+│  │                  │      │                  │      │                  │ │
+│  │ • CORS Settings  │      │ • Network Mode   │      │ • Polling Times  │ │
+│  │ • Rate Limiting  │      │ • Sensor Pins    │      │ • Log Settings   │ │
+│  │ • Security       │      │ • WiFi Creds     │      │ • Thresholds     │ │
+│  │ • Logging        │      │ • Intervals      │      │ • Dev/Prod       │ │
+│  └────────┬─────────┘      └────────┬─────────┘      └────────┬─────────┘ │
+│           │                         │                          │           │
+└───────────┼─────────────────────────┼──────────────────────────┼───────────┘
+            │                         │                          │
+            ▼                         ▼                          ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            AUTOMATIC USAGE                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────┐        ┌─────────────────┐        ┌─────────────────┐ │
+│  │  settings.py    │        │   main.ino      │        │ Components      │ │
+│  │  ─────────────  │        │   ──────────    │        │ ──────────────  │ │
+│  │ from config     │        │ #include        │        │ import {        │ │
+│  │ import CONFIG   │        │ "config.h"      │        │   getApiUrl     │ │
+│  │                 │        │                 │        │ } from 'config' │ │
+│  │ SECRET_KEY =    │        │ Django URL =    │        │                 │ │
+│  │ CONFIG['SECRET']│        │ DJANGO_URL      │        │ fetch(getUrl()) │ │
+│  └─────────────────┘        └─────────────────┘        └─────────────────┘ │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          WHEN TO UPDATE CONFIGS                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+ SCENARIO 1: ESP32 Gets New DHCP IP
+ ───────────────────────────────────
+ ✅ NO CONFIG CHANGE NEEDED!
+ 
+ ESP32's IP can change freely via DHCP.
+ It will still connect to Django using DJANGO_SERVER_IP.
+ Django logs the ESP32's current IP automatically.
+
+
+ SCENARIO 2: Django Server IP Changes
+ ─────────────────────────────────────
+ ⚠️  UPDATE ALL 3 CONFIG FILES:
+ 
+ 1. smartsensors_django/config.py
+    DJANGO_URL = 'http://NEW_IP:8000'
+ 
+ 2. main/config.h
+    #define DJANGO_SERVER_IP "NEW_IP"
+ 
+ 3. smartsensors_front/src/config.js
+    BASE_URL: 'http://NEW_IP:8000'
+ 
+ Then:
+ - Restart Django server
+ - Upload new firmware to ESP32
+ - Restart frontend dev server
+
+
+ SCENARIO 3: Moving Networks
+ ────────────────────────────
+ ⚠️  UPDATE ALL 3 CONFIG FILES
+ 
+ Follow SCENARIO 2 steps above.
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              DATA FLOW                                       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+ ESP32 (Gets IP via DHCP)               Django Backend              Frontend
+ ────────────────────────               ──────────────              ────────
+ 
+ 1. Boot & get DHCP IP                                              
+    └─ IP: 192.168.1.150 ◄─ DHCP                                   
+                                                                    
+ 2. Read config.h                                                   
+    └─ DJANGO_SERVER_IP="192.168.1.100"                            
+                                                                    
+ 3. Send sensor data ──────POST──────► config.py                   
+    IP can be different each time!     DJANGO_URL="192.168.1.100"  
+                                       ↓                            
+                                      Receives data                 
+                                       Logs ESP32 IP                
+                                       Stores in database           
+                                       ↓                            
+ 4. User opens browser ─────────────────────────────────────────►  
+                                                                 config.js
+                                                                 BASE_URL="192.168.1.100"
+                                                                    ↓
+ 5. Frontend fetches ◄──────GET──────┐                        Fetch data
+                                      │                              │
+ 6. Display data   ◄──────JSON───────┴──────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         TESTING CONFIGURATION                                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+ DJANGO:
+ ───────
+ $ cd smartsensors_django
+ $ python config.py
+ 
+ Output:
+ ======================================
+ SMART SENSORS - Django Configuration
+ ======================================
+ Django URL: http://192.168.1.100:8000
+ Debug Mode: True
+ CORS Allow All: True
+ ✅ Configuration looks good!
+ 
+
+ ESP32:
+ ──────
+ Upload firmware → Open Serial Monitor (115200 baud)
+ 
+ Output:
+ ============================================
+ ESP32 Smart Sensors Configuration
+ ============================================
+ Device: SmartSensors_ESP32
+ Network Mode: ethernet
+ Django Server: 192.168.1.100
+ Django Port: 8000
+ Sensors: All Enabled
+ ============================================
+ 
+
+ FRONTEND:
+ ─────────
+ $ cd smartsensors_front
+ $ npm run dev
+ 
+ Browser Console Output:
+ 📋 Frontend Configuration
+ API Base URL: http://192.168.1.100:8000
+ Environment: Development
+ Polling Interval: 2000 ms
+ ✅ Configuration validated successfully
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                        QUICK REFERENCE CARD                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+ ┌────────────────────────────────────────────────────────────────────────────┐
+ │  MOST IMPORTANT SETTING: Django Server IP                                  │
+ ├────────────────────────────────────────────────────────────────────────────┤
+ │                                                                            │
+ │  Find your IP:                                                             │
+ │    Linux/Mac:  ip addr show  or  ifconfig                                 │
+ │    Windows:    ipconfig                                                    │
+ │                                                                            │
+ │  Update in 3 places:                                                       │
+ │    1. smartsensors_django/config.py → DJANGO_URL                          │
+ │    2. main/config.h → DJANGO_SERVER_IP                                    │
+ │    3. smartsensors_front/src/config.js → BASE_URL                         │
+ │                                                                            │
+ │  Example:                                                                  │
+ │    If Django runs on 192.168.1.100, set ALL THREE to that IP.            │
+ │                                                                            │
+ └────────────────────────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              FILE LOCATIONS                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+ smartsensors/
+ ├── smartsensors_django/
+ │   ├── config.py                    ◄── DJANGO CONFIG
+ │   └── smartsensors_django/
+ │       └── settings.py              (imports config.py)
+ │
+ ├── main/
+ │   ├── config_template.h            (Template - DO NOT EDIT)
+ │   ├── config.h                     ◄── ESP32 CONFIG (create from template)
+ │   └── main.ino                     (uses config.h)
+ │
+ ├── smartsensors_front/
+ │   └── src/
+ │       ├── config.js                ◄── FRONTEND CONFIG
+ │       └── pages/
+ │           ├── AirQualityDashboard.jsx    (uses config.js)
+ │           ├── GasSensorsPanel.jsx        (uses config.js)
+ │           └── DeviceInfoPanel.jsx        (uses config.js)
+ │
+ └── Documentation/
+     ├── CONFIGURATION_GUIDE.md       (Complete setup guide)
+     └── CONFIGURATION_COMPLETE.md    (Implementation summary)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+ Created: November 22, 2025  |  Version: 1.0  |  Status: Complete ✅
+═══════════════════════════════════════════════════════════════════════════════

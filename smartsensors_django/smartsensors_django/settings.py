@@ -11,21 +11,46 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Import centralized configuration
+sys.path.insert(0, str(BASE_DIR))
+try:
+    from config import CONFIG
+    print("✅ Loaded configuration from config.py")
+except ImportError:
+    print("⚠️  Warning: config.py not found. Using default settings.")
+    CONFIG = {
+        'SECRET_KEY': 'django-insecure-@z@5#rv!q6lli#lctg2vjvjw7w=2g3*i1ii9v5+792lpt2o#dw',
+        'DEBUG_MODE': True,
+        'ALLOWED_HOSTS': ['*'],
+        'CORS_ALLOWED_ORIGINS': ['http://localhost:5173', 'http://127.0.0.1:5173'],
+        'CORS_ALLOW_ALL_ORIGINS': True,
+    }
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-@z@5#rv!q6lli#lctg2vjvjw7w=2g3*i1ii9v5+792lpt2o#dw'
+SECRET_KEY = CONFIG.get('SECRET_KEY', 'django-insecure-@z@5#rv!q6lli#lctg2vjvjw7w=2g3*i1ii9v5+792lpt2o#dw')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = CONFIG.get('DEBUG_MODE', True)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = CONFIG.get('ALLOWED_HOSTS', ['*'])
+
+# CORS Configuration
+CORS_ALLOWED_ORIGINS = CONFIG.get('CORS_ALLOWED_ORIGINS', [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+])
+
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = CONFIG.get('CORS_ALLOW_ALL_ORIGINS', True)
 
 
 # Application definition
@@ -37,13 +62,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'sensors',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'sensors.middleware.SecurityLoggingMiddleware',
+    'sensors.middleware.SuspiciousPatternMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',

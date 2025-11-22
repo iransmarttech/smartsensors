@@ -102,15 +102,33 @@ void SensorNetworkManager::startAccessPoint() {
     WiFi.disconnect(true);
     WiFi.mode(WIFI_AP);
 
-    if (WiFi.softAP(AP_SSID, AP_PASS)) {
+    // Generate unique SSID using MAC address
+    String apSSID = generateAPSSID();
+    
+    DEBUG_PRINT("AP SSID: ");
+    DEBUG_PRINTLN(apSSID);
+    
+    if (WiFi.softAP(apSSID.c_str(), AP_PASS)) {
         DEBUG_PRINT("AP started. IP: ");
         DEBUG_PRINTLN(WiFi.softAPIP());
+        DEBUG_PRINT("AP Password: ");
+        DEBUG_PRINTLN(AP_PASS);
+        DEBUG_PRINTLN("SECURITY: Change default AP password in credentials.h!");
         apActive = true;
 
         #ifdef MDNS_ENABLED
         initmDNS();
         #endif
     }
+}
+
+String SensorNetworkManager::generateAPSSID() {
+    uint8_t mac[6];
+    WiFi.macAddress(mac);
+    char ssid[32];
+    snprintf(ssid, sizeof(ssid), "%s%02X%02X%02X", 
+             AP_SSID_PREFIX, mac[3], mac[4], mac[5]);
+    return String(ssid);
 }
 #endif
 
@@ -135,9 +153,9 @@ String SensorNetworkManager::getIPAddress() {
 void SensorNetworkManager::initmDNS() {
     DEBUG_PRINTLN("Starting mDNS responder...");
     DEBUG_PRINT("Hostname: ");
-    DEBUG_PRINTLN(HOSTNAME);
+    DEBUG_PRINTLN(DEVICE_HOSTNAME);
     
-    if (!MDNS.begin(HOSTNAME)) {
+    if (!MDNS.begin(DEVICE_HOSTNAME)) {
         DEBUG_PRINTLN("✗ ERROR: mDNS.begin() failed!");
         DEBUG_PRINTLN("Possible reasons:");
         DEBUG_PRINTLN("  - Hostname already in use");

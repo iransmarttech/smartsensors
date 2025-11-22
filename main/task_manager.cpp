@@ -4,7 +4,8 @@
 #include "mr007_sensor.h"
 #include "me4_so2_sensor.h"
 #include "web_server.h"
-#include "network_manager.h" 
+#include "network_manager.h"
+#include "django_client.h"
 #include "config.h"
 #include "shared_data.h"
 #include <Arduino.h>
@@ -170,6 +171,12 @@ void TaskManager::initSensors() {
     DEBUG_PRINTLN("✓ Button/LED/Relay initialized");
     #endif
     
+    #ifdef DJANGO_ENABLED
+    djangoClient.init();
+    djangoClient.setServerURL(DJANGO_SERVER_URL);
+    DEBUG_PRINTLN("✓ Django client initialized");
+    #endif
+    
     DEBUG_PRINTLN("✓ All sensors initialized successfully");
 }
 
@@ -250,6 +257,11 @@ void TaskManager::readSensors(unsigned long currentTime) {
         me4so2Sensor.readSensor();
         lastME4SO2Read = currentTime;
     }
+    #endif
+    
+    // Send data to Django server
+    #ifdef DJANGO_ENABLED
+    djangoClient.sendSensorData();
     #endif
 }
 

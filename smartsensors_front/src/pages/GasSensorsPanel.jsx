@@ -1,8 +1,70 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import SensorGroup from "../components/SensorGroup";
 import SystemStatus from "../components/SystemStatus";
+import logger from "../utils/logger";
+import { getSensorDataUrl, getPollingInterval } from "../config";
 
-function GasSensorsPanel({ mr007Data, me4so2Data, ze40Data }) {
+// API Configuration from centralized config
+const API_BASE_URL = getSensorDataUrl();
+const POLLING_INTERVAL = getPollingInterval('gas_sensors');
+
+function GasSensorsPanel() {
+  const [mr007Data, setMr007Data] = useState(null);
+  const [me4so2Data, setMe4so2Data] = useState(null);
+  const [ze40Data, setZe40Data] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch data from Django API
+  const fetchSensorData = async () => {
+    const startTime = Date.now();
+    try {
+      logger.info('GasSensorsPanel', 'Fetching gas sensor data', { url: `${API_BASE_URL}/data` });
+      
+      const response = await fetch(`${API_BASE_URL}/data`);
+      const responseTime = Date.now() - startTime;
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result = await response.json();
+      
+      logger.logAPICall(`${API_BASE_URL}/data`, 'GET', response.status, responseTime);
+      logger.info('GasSensorsPanel', 'Gas sensor data received', { 
+        responseTime: `${responseTime}ms`,
+        hasMR007: !!result.mr007,
+        hasME4SO2: !!result.me4_so2,
+        hasZE40: !!result.ze40
+      });
+      
+      setMr007Data(result.mr007);
+      setMe4so2Data(result.me4_so2);
+      setZe40Data(result.ze40);
+      
+      setLoading(false);
+      setError(null);
+    } catch (err) {
+      const responseTime = Date.now() - startTime;
+      logger.error('GasSensorsPanel', 'Failed to fetch gas sensor data', err, { 
+        url: `${API_BASE_URL}/data`,
+        responseTime: `${responseTime}ms`
+      });
+      console.error("Error fetching sensor data:", err);
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  // Fetch data every 2 seconds
+  useEffect(() => {
+    logger.info('GasSensorsPanel', 'Component mounted - initializing gas sensor monitoring');
+    fetchSensorData();
+    const interval = setInterval(fetchSensorData, POLLING_INTERVAL);
+    return () => {
+      logger.info('GasSensorsPanel', 'Component unmounting - cleaning up interval');
+      clearInterval(interval);
+    };
+  }, []);
   // داده‌های تستی برای نمایش
   const defaultData = {
     mr007Data: {
@@ -32,6 +94,24 @@ function GasSensorsPanel({ mr007Data, me4so2Data, ze40Data }) {
     me4so2Data: me4so2Data || defaultData.me4so2Data,
     ze40Data: ze40Data || defaultData.ze40Data,
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 text-center">
+        <div className="text-white font-Vazirmatn">در حال بارگذاری...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 font-Vazirmatn text-center">
+          خطا در دریافت اطلاعات: {error}
+        </div>
+      </div>
+    );
+  }
 
   // تعریف سنسورها به صورت داینامیک
   const sensorGroups = [

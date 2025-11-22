@@ -20,6 +20,9 @@ public:
     bool isEthernetActive() { return ethActive; }
     bool isWifiActive() { return wifiActive; }
     bool isAPActive() { return apActive; }
+    
+    // Security: Generate unique AP SSID using MAC address
+    String generateAPSSID();
 
 private:
     bool ethActive = false;

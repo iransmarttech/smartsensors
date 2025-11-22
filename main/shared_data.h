@@ -6,6 +6,9 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
+// Forward declarations
+class DjangoClient;
+
 // Unified sensor data structure
 struct SharedSensorData {
     // ZE40 Sensor
@@ -52,6 +55,11 @@ struct SharedSensorData {
 
 extern SharedSensorData sharedData;
 extern SemaphoreHandle_t dataMutex;
+
+#ifdef DJANGO_ENABLED
+#include "django_client.h"
+extern DjangoClient djangoClient;
+#endif
 
 // Thread-safe data access functions
 void initSharedData();
