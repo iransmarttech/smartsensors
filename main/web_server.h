@@ -31,7 +31,7 @@ public:
 private:
     void sendMainPage(Client &client, bool authenticated);
     void sendJSONData(Client &client, bool authenticated);
-    void handleHTTPRequest(Client &client);
+    void handleHTTPRequest(Client &client, const String& clientIP);
     void sendUnauthorized(Client &client);
     void sendForbidden(Client &client);
     void sendSecurityHeaders(Client &client);

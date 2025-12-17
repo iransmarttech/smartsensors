@@ -259,6 +259,10 @@ void TaskManager::readSensors(unsigned long currentTime) {
     }
     #endif
     
+    // Add small delay before sending to Django to avoid network contention
+    // with the Ethernet server on the other core
+    vTaskDelay(pdMS_TO_TICKS(50));
+    
     // Send data to Django server
     #ifdef DJANGO_ENABLED
     djangoClient.sendSensorData();

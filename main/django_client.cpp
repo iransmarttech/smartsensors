@@ -1,8 +1,133 @@
 #include "django_client.h"
 #include "shared_data.h"
+#include "network_manager.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <Ethernet.h>
+#include <EthernetClient.h>
 
 String DjangoClient::serverURL = "";
 unsigned long DjangoClient::lastSendTime = 0;
+
+// Native socket-based HTTP POST to avoid HTTPClient mutex conflicts
+bool DjangoClient::sendHTTPPOST(const String& url, const String& payload) {
+    // Parse URL to extract host, port, and path
+    String host = "";
+    String path = "/api/sensors";
+    int port = 80;
+    
+    // Remove http:// prefix if present
+    String cleanURL = url;
+    if (cleanURL.startsWith("http://")) {
+        cleanURL = cleanURL.substring(7);
+    }
+    
+    // Extract path
+    int pathIndex = cleanURL.indexOf('/');
+    if (pathIndex != -1) {
+        path = cleanURL.substring(pathIndex);
+        host = cleanURL.substring(0, pathIndex);
+    } else {
+        host = cleanURL;
+    }
+    
+    // Extract port if specified
+    int portIndex = host.indexOf(':');
+    if (portIndex != -1) {
+        port = host.substring(portIndex + 1).toInt();
+        host = host.substring(0, portIndex);
+    }
+    
+    // Parse host string to IP address
+    // For W5500, we need to handle IP address directly or use the WIZnet DNS
+    IPAddress serverIP;
+    if (!serverIP.fromString(host)) {
+        // If it's not a simple IP address, log and fail
+        // (W5500 doesn't have simple DNS resolution)
+        DEBUG_PRINTLN("✗ Host must be an IP address (DNS not available for W5500): " + host);
+        DEBUG_PRINTLN("  Edit credentials.h and set DJANGO_SERVER_URL to your server's IP");
+        return false;
+    }
+    
+    DEBUG_PRINT("✓ Connecting to ");
+    DEBUG_PRINT(serverIP);
+    DEBUG_PRINT(":");
+    DEBUG_PRINTLN(port);
+    
+    // Create socket and connect
+    EthernetClient client;
+    unsigned long connectStart = millis();
+    
+    if (!client.connect(serverIP, port)) {
+        DEBUG_PRINTLN("✗ Failed to connect to server");
+        return false;
+    }
+    
+    unsigned long connectTime = millis() - connectStart;
+    DEBUG_PRINT("✓ Connected in ");
+    DEBUG_PRINT(connectTime);
+    DEBUG_PRINTLN("ms");
+    
+    // Build HTTP POST request
+    String httpRequest = "POST " + path + " HTTP/1.1\r\n";
+    httpRequest += "Host: " + host + "\r\n";
+    httpRequest += "Content-Type: application/json\r\n";
+    httpRequest += "Content-Length: " + String(payload.length()) + "\r\n";
+    httpRequest += "Connection: close\r\n";
+    httpRequest += "\r\n";
+    httpRequest += payload;
+    
+    // Send request
+    client.print(httpRequest);
+    client.flush();
+    
+    DEBUG_PRINTLN("✓ Request sent, waiting for response...");
+    
+    // Read response
+    unsigned long responseStart = millis();
+    String response = "";
+    int httpStatusCode = 0;
+    bool headersParsed = false;
+    
+    unsigned long timeout = 10000;  // 10 second timeout
+    while (client.connected() && (millis() - responseStart < timeout)) {
+        if (client.available()) {
+            char c = client.read();
+            response += c;
+            
+            // Parse status line: "HTTP/1.1 200 OK\r\n"
+            if (!headersParsed && response.indexOf("\r\n\r\n") != -1) {
+                headersParsed = true;
+                
+                // Extract status code
+                int statusStart = response.indexOf(' ') + 1;
+                int statusEnd = response.indexOf(' ', statusStart);
+                String statusStr = response.substring(statusStart, statusEnd);
+                httpStatusCode = statusStr.toInt();
+                
+                DEBUG_PRINT("✓ HTTP Status: ");
+                DEBUG_PRINTLN(httpStatusCode);
+                
+                // For success codes, we can return early
+                if (httpStatusCode >= 200 && httpStatusCode < 300) {
+                    client.stop();
+                    return true;
+                }
+            }
+        } else {
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+    }
+    
+    client.stop();
+    
+    if (httpStatusCode == 0) {
+        DEBUG_PRINTLN("✗ No valid HTTP response received");
+        return false;
+    }
+    
+    return (httpStatusCode >= 200 && httpStatusCode < 300);
+}
 
 void DjangoClient::init() {
     DEBUG_PRINTLN("Django Client initialized");
@@ -111,16 +236,20 @@ void DjangoClient::sendSensorData() {
         return;
     }
     
+    // Add delay to allow Ethernet operations to complete
+    vTaskDelay(pdMS_TO_TICKS(100));
+    
     DEBUG_PRINTLN("╔════════════════════════════════════════╗");
-    DEBUG_PRINTLN("║   SENDING DATA TO DJANGO BACKEND      ║");
+    DEBUG_PRINTLN("║   SENDING DATA TO DJANGO BACKEND       ║");
     DEBUG_PRINTLN("╚════════════════════════════════════════╝");
     
-    HTTPClient http;
-    http.begin(serverURL);
-    http.addHeader("Content-Type", "application/json");
-    http.setTimeout(5000);  // 5 second timeout
-    
     String payload = buildJSONPayload();
+    
+    if (payload.length() == 0 || payload == "{}") {
+        DEBUG_PRINTLN("⚠ Empty payload - skipping send");
+        lastSendTime = millis();
+        return;
+    }
     
     DEBUG_PRINTLN("→ Target URL: " + serverURL);
     DEBUG_PRINTLN("→ Payload size: " + String(payload.length()) + " bytes");
@@ -131,32 +260,20 @@ void DjangoClient::sendSensorData() {
     DEBUG_PRINTLN("");
     
     unsigned long sendStart = millis();
-    int httpResponseCode = http.POST(payload);
-    unsigned long sendDuration = millis() - sendStart;
     
-    if (httpResponseCode > 0) {
-        String response = http.getString();
-        
-        DEBUG_PRINTLN("✓ Django Response Received:");
-        DEBUG_PRINT("  Status Code: ");
-        DEBUG_PRINTLN(httpResponseCode);
-        DEBUG_PRINT("  Response Time: ");
+    // Use native socket-based POST (avoids HTTPClient mutex conflicts)
+    if (sendHTTPPOST(serverURL, payload)) {
+        unsigned long sendDuration = millis() - sendStart;
+        DEBUG_PRINTLN("✓ Data successfully sent to Django");
+        DEBUG_PRINT("  Send Time: ");
         DEBUG_PRINT(sendDuration);
         DEBUG_PRINTLN(" ms");
-        DEBUG_PRINT("  Response: ");
-        DEBUG_PRINTLN(response);
-        
-        if (httpResponseCode == 200 || httpResponseCode == 207) {
-            DEBUG_PRINTLN("✓ Data successfully stored in Django");
-        } else {
-            DEBUG_PRINTLN("⚠ Django returned non-success code");
-        }
     } else {
-        DEBUG_PRINTLN("✗ Django Communication Failed:");
-        DEBUG_PRINT("  Error Code: ");
-        DEBUG_PRINTLN(httpResponseCode);
-        DEBUG_PRINT("  Error: ");
-        DEBUG_PRINTLN(http.errorToString(httpResponseCode));
+        unsigned long sendDuration = millis() - sendStart;
+        DEBUG_PRINTLN("✗ Failed to send data to Django");
+        DEBUG_PRINT("  Attempted for: ");
+        DEBUG_PRINT(sendDuration);
+        DEBUG_PRINTLN(" ms");
         DEBUG_PRINTLN("  Possible reasons:");
         DEBUG_PRINTLN("  - Django server not running");
         DEBUG_PRINTLN("  - Wrong URL configured");
@@ -164,7 +281,9 @@ void DjangoClient::sendSensorData() {
         DEBUG_PRINTLN("  - Firewall blocking connection");
     }
     
-    http.end();
+    // Add delay after HTTP operation to let stack recover
+    vTaskDelay(pdMS_TO_TICKS(100));
+    
     lastSendTime = millis();
     
     DEBUG_PRINTLN("═══════════════════════════════════════════");

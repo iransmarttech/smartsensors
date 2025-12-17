@@ -179,7 +179,7 @@ void SensorNetworkManager::initmDNS() {
     DEBUG_PRINTLN("✓ mDNS responder started successfully");
     DEBUG_PRINTLN("=============================================================");
     DEBUG_PRINT("Access via hostname: http://");
-    DEBUG_PRINT(HOSTNAME);
+    DEBUG_PRINT(DEVICE_HOSTNAME);
     DEBUG_PRINTLN(".local/");
     DEBUG_PRINT("Access via IP:       http://");
     DEBUG_PRINTLN(getIPAddress());

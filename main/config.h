@@ -57,7 +57,9 @@ extern const char* API_ACCESS_TOKEN;
 extern const char* DJANGO_SERVER_URL;  // e.g., "http://192.168.1.100:8000/api/sensors"
 
 // Task Configuration - Optimized for ESP32-S3
-#define ETH_TASK_STACK_SIZE 20480
+// Increased stack sizes to prevent mutex assertion failures during concurrent network ops
+#define ETH_TASK_STACK_SIZE 32768  // Increased from 20480 for HTTP client stability
+#define SENSOR_TASK_STACK_SIZE 16384
 #define SENSOR_TASK_STACK_SIZE 20480
 #define ETH_TASK_PRIORITY 2
 #define SENSOR_TASK_PRIORITY 1

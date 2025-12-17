@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import sys
+from urllib.parse import urlparse
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -41,7 +42,29 @@ SECRET_KEY = CONFIG.get('SECRET_KEY', 'django-insecure-@z@5#rv!q6lli#lctg2vjvjw7
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = CONFIG.get('DEBUG_MODE', True)
 
-ALLOWED_HOSTS = CONFIG.get('ALLOWED_HOSTS', ['*'])
+# Compute ALLOWED_HOSTS. If the server is configured to bind to 0.0.0.0
+# and the configured DJANGO_URL is inside a private 192.168.1.0/24 network,
+# expand ALLOWED_HOSTS to include all addresses in that /24 so LAN clients
+# can access the Django server without requiring manual host entries.
+try:
+    django_url = CONFIG.get('DJANGO_URL', '')
+    parsed = urlparse(django_url)
+    host = parsed.hostname
+except Exception:
+    host = None
+
+if CONFIG.get('DJANGO_HOST') == '0.0.0.0' and host and host.startswith('192.168.'):
+    # Derive /24 prefix (e.g. 192.168.1.) and allow .1 - .254
+    parts = host.split('.')
+    if len(parts) >= 3:
+        prefix = '.'.join(parts[:3]) + '.'
+        generated_hosts = [prefix + str(i) for i in range(1, 255)]
+        # include localhost variants as well
+        ALLOWED_HOSTS = ['localhost', '127.0.0.1'] + generated_hosts
+    else:
+        ALLOWED_HOSTS = CONFIG.get('ALLOWED_HOSTS', ['*'])
+else:
+    ALLOWED_HOSTS = CONFIG.get('ALLOWED_HOSTS', ['*'])
 
 # CORS Configuration
 CORS_ALLOWED_ORIGINS = CONFIG.get('CORS_ALLOWED_ORIGINS', [

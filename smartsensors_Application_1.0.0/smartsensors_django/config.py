@@ -17,7 +17,7 @@ DJANGO_PORT = 8000        # Default Django port
 # External Access
 # Set this to your server's IP address or domain name
 # This is used by ESP32 and Frontend to communicate with Django
-DJANGO_URL = 'http://192.168.1.100:8000'  # Change to your server IP
+DJANGO_URL = 'http://192.168.1.4:8000'  # Your laptop's IP on the network
 
 # Alternative configurations (uncomment as needed):
 # DJANGO_URL = 'http://localhost:8000'              # Local development
@@ -32,10 +32,10 @@ DJANGO_URL = 'http://192.168.1.100:8000'  # Change to your server IP
 
 # Frontend URLs that can access this backend
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',      # Vite dev server
+    'http://localhost:5173',      # Vite dev server on localhost
+    'http://127.0.0.1:5173',      # Vite dev server on 127.0.0.1
+    'http://192.168.1.4:5173',    # Vite dev server on your laptop's LAN IP
     'http://localhost:3000',      # Alternative frontend port
-    'http://192.168.1.100:5173',  # Network access to Vite
-    'http://192.168.1.101:5173',  # Another computer on network
 ]
 
 # For development only - allows all origins (DISABLE IN PRODUCTION!)
@@ -45,8 +45,9 @@ CORS_ALLOW_ALL_ORIGINS = True  # Set to False in production
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
-    '192.168.1.100',  # Add your server IP
-    # Add your domain name here for production
+    '192.168.1.4',    # Your laptop's IP
+    '192.168.1.3',    # ESP32 board IP
+    '192.168.1.0',    # Entire LAN subnet
 ]
 
 

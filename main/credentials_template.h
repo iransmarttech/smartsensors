@@ -12,24 +12,36 @@
 // ============================================================================
 
 // WiFi Station Mode Credentials
-const char* WIFI_SSID = "YourWiFiNetworkName";
-const char* WIFI_PASS = "YourStrongWiFiPassword123!";
+extern const char* WIFI_SSID;
+extern const char* WIFI_PASS;
 
 // Access Point Mode Credentials
-const char* AP_SSID_PREFIX = "SmartSensor-";
-const char* AP_PASS = "StrongAPPassword123!";  // Minimum 16 characters
+extern const char* AP_SSID_PREFIX;
+extern const char* AP_PASS;
 
 // Web Interface Authentication
-const char* WEB_ADMIN_USERNAME = "admin";
-const char* WEB_ADMIN_PASSWORD = "ChangeThisPassword123!";  // Minimum 16 characters
+extern const char* WEB_ADMIN_USERNAME;
+extern const char* WEB_ADMIN_PASSWORD;
 
 // API Access Token
-const char* API_ACCESS_TOKEN = "generate-random-32-char-token-here";
+extern const char* API_ACCESS_TOKEN;
 
 // Django Backend Server URL
-const char* DJANGO_SERVER_URL = "http://192.168.1.100:8000/api/sensors";  // Change to your Django server IP and port
+extern const char* DJANGO_SERVER_URL;
 
 // mDNS Hostname
-const char* DEVICE_HOSTNAME = "smartSensor";
+extern const char* DEVICE_HOSTNAME;
+
+// NOTE: The actual values for these credentials should be defined in credentials.cpp
+// Example values:
+//   WIFI_SSID = "YourWiFiNetworkName";
+//   WIFI_PASS = "YourStrongWiFiPassword123!";
+//   AP_SSID_PREFIX = "SmartSensor-";
+//   AP_PASS = "StrongAPPassword123!";
+//   WEB_ADMIN_USERNAME = "admin";
+//   WEB_ADMIN_PASSWORD = "ChangeThisPassword123!";
+//   API_ACCESS_TOKEN = "generate-random-32-char-token-here";
+//   DJANGO_SERVER_URL = "http://192.168.1.100:8000/api/sensors";
+//   DEVICE_HOSTNAME = "smartSensor";
 
 #endif

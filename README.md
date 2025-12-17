@@ -5,8 +5,8 @@ This project is a smart sensor platform integrating hardware, backend, and front
 
 ### Folder Structure
 - **main/**: ESP32/Arduino source code for sensor hardware, handling data collection and device networking.
-- **smartsensors_django/**: Django backend for storing sensor data, managing devices, and providing APIs/web interfaces.
-- **smartsensors_front/**: React/Vite frontend for visualizing sensor data and device status in a user-friendly dashboard.
+- **smartsensors_Application_1.0.0/smartsensors_django/**: Django backend for storing sensor data, managing devices, and providing APIs/web interfaces.
+- **smartsensors_Application_1.0.0/smartsensors_front/**: React/Vite frontend for visualizing sensor data and device status in a user-friendly dashboard.
 
 ---
 
@@ -32,12 +32,28 @@ React Frontend (User Interface)
 
 ## Quick Start
 
-### 1. Django Backend
+
+### 1. Django Backend (LAN Access)
 ```bash
-cd smartsensors_django
+cd smartsensors_Application_1.0.0/smartsensors_django
 pip install -r requirements.txt
 python manage.py migrate
+# Run Django on all interfaces for LAN access:
 python manage.py runserver 0.0.0.0:8000
+```
+
+**LAN Access:**
+- Make sure your `config.py` in `smartsensors_Application_1.0.0/smartsensors_django/` has:
+    - `DJANGO_HOST = '0.0.0.0'`
+    - `DJANGO_URL = 'http://192.168.1.X:8000'` (replace X with your server's LAN IP)
+    - Add your LAN IP to `ALLOWED_HOSTS` if needed (see config.py)
+- The backend will be accessible to all devices on your 192.168.1.0/24 network at `http://192.168.1.X:8000`
+
+### 2. React Frontend
+```bash
+cd smartsensors_Application_1.0.0/smartsensors_front
+npm install
+npm run dev
 ```
 
 ### 2. React Frontend
@@ -49,7 +65,7 @@ npm run dev
 
 ### 3. ESP32 Hardware
 1. Copy `main/credentials_template.h` to `main/credentials.h`
-2. Configure WiFi credentials and Django server URL in `credentials.h`
+2. Configure WiFi credentials and Django server URL (use your LAN IP, e.g. `http://192.168.1.X:8000`) in `credentials.h`
 3. Upload to ESP32-S3 board
 
 ---

@@ -13,10 +13,7 @@ const char HTTP_CACHE_HEADER[] PROGMEM =
     "Content-Type: text/html\r\n"
     "Cache-Control: public, max-age=3600\r\n"  // Cache HTML for 1 hour
     "X-Frame-Options: DENY\r\n"  // Security: prevent clickjacking
-    "X-Content-Type-Options: nosniff\r\n"  // Security: prevent M    return (token == API_ACCESS_TOKEN);
-}
-
-void SensorWebServer::handleHTTPRequest(Client &client) {sniffing
+    "X-Content-Type-Options: nosniff\r\n"  // Security: prevent MIME sniffing
     "Connection: close\r\n\r\n";
 
 const char HTTP_NO_CACHE_HEADER[] PROGMEM = 
@@ -419,12 +416,13 @@ void SensorWebServer::handleEthernetClient() {
     
     if (client) {
         DEBUG_PRINTLN("→ Client connected!");
-        DEBUG_PRINTF("  Client IP: %d.%d.%d.%d\n", 
-            client.remoteIP()[0], client.remoteIP()[1], 
-            client.remoteIP()[2], client.remoteIP()[3]);
+        IPAddress ip = client.remoteIP();
+        String clientIP = String(ip[0]) + "." + String(ip[1]) + "." + 
+                         String(ip[2]) + "." + String(ip[3]);
+        DEBUG_PRINTF("  Client IP: %s\n", clientIP.c_str());
         
         activeClients++;
-        handleHTTPRequest(client);
+        handleHTTPRequest(client, clientIP);
         client.stop();
         activeClients--;
         DEBUG_PRINTLN("← Client disconnected");
@@ -445,8 +443,12 @@ void SensorWebServer::handleWiFiClient() {
     WiFiClient client = wifiServer->available();
     
     if (client) {
+        IPAddress ip = client.remoteIP();
+        String clientIP = String(ip[0]) + "." + String(ip[1]) + "." + 
+                         String(ip[2]) + "." + String(ip[3]);
+        
         activeClients++;
-        handleHTTPRequest(client);
+        handleHTTPRequest(client, clientIP);
         client.stop();
         activeClients--;
     }
@@ -520,7 +522,7 @@ bool SensorWebServer::checkAPIToken(const String& tokenHeader) {
     return (tokenHeader == API_ACCESS_TOKEN);
 }
 
-void WebServer::handleHTTPRequest(Client &client) {
+void SensorWebServer::handleHTTPRequest(Client &client, const String& clientIP) {
     if (xPortInIsrContext()) {
         client.stop();
         return;
@@ -532,7 +534,6 @@ void WebServer::handleHTTPRequest(Client &client) {
     String request = "";
     String authHeader = "";
     String apiTokenHeader = "";
-    String clientIP = "";
     
     while (client.connected() && (millis() - startTime < 2000)) {
         if (client.available()) {
@@ -551,27 +552,7 @@ void WebServer::handleHTTPRequest(Client &client) {
     
     DEBUG_PRINTF("Request: %s\n", request.substring(0, 50).c_str());
 
-    // Extract client IP (for rate limiting)
-    #ifdef ETHERNET_ENABLED
-    EthernetClient* ethClient = dynamic_cast<EthernetClient*>(&client);
-    if (ethClient) {
-        IPAddress ip = ethClient->remoteIP();
-        clientIP = String(ip[0]) + "." + String(ip[1]) + "." + 
-                   String(ip[2]) + "." + String(ip[3]);
-    }
-    #endif
-    #ifdef WIFI_FALLBACK_ENABLED
-    if (clientIP.length() == 0) {
-        WiFiClient* wifiClient = dynamic_cast<WiFiClient*>(&client);
-        if (wifiClient) {
-            IPAddress ip = wifiClient->remoteIP();
-            clientIP = String(ip[0]) + "." + String(ip[1]) + "." + 
-                       String(ip[2]) + "." + String(ip[3]);
-        }
-    }
-    #endif
-
-    // Rate limiting check (only if we got IP)
+    // Rate limiting check
     if (clientIP.length() > 0) {
         // Periodically clean old rate limit records
         if (millis() - lastRateLimitCleanup > 60000) {
