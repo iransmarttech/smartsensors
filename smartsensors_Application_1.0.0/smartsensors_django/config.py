@@ -17,7 +17,7 @@ DJANGO_PORT = 8000        # Default Django port
 # External Access
 # Set this to your server's IP address or domain name
 # This is used by ESP32 and Frontend to communicate with Django
-DJANGO_URL = 'http://192.168.1.4:8000'  # Your laptop's IP on the network
+DJANGO_URL = 'http://192.168.4.2:8000'  # Your laptop's IP on the network
 
 # Alternative configurations (uncomment as needed):
 # DJANGO_URL = 'http://localhost:8000'              # Local development
@@ -35,6 +35,8 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',      # Vite dev server on localhost
     'http://127.0.0.1:5173',      # Vite dev server on 127.0.0.1
     'http://192.168.1.4:5173',    # Vite dev server on your laptop's LAN IP
+    'http://192.168.43.132:5173',  # Vite dev server on your laptop's wifi IP
+    'http://192.168.4.2:5137',       # Vite dev server on your laptop's AP IP
     'http://localhost:3000',      # Alternative frontend port
 ]
 
@@ -45,9 +47,15 @@ CORS_ALLOW_ALL_ORIGINS = True  # Set to False in production
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
-    '192.168.1.4',    # Your laptop's IP
-    '192.168.1.3',    # ESP32 board IP
-    '192.168.1.0',    # Entire LAN subnet
+    # '192.168.1.4',    # Your laptop's IP
+    # '192.168.43.132',  # Your laptop's wifi IP
+    '192.168.4.2',  # Your laptop's AP IP
+    # '192.168.1.3',    # ESP32 board IP
+    # '192.168.43.113',  # ESP32 board IP
+    '192.168.4.1',      # ESP32 board IP
+    # '192.168.1.0',    # Entire LAN subnet
+    # '192.168.43.0',  # Entire WiFi subnet
+    '192.168.4.0',  # Entire AP subnet
 ]
 
 
@@ -56,7 +64,9 @@ ALLOWED_HOSTS = [
 # ============================================================================
 
 # Expected ESP32 IP range (for logging/monitoring)
-ESP32_IP_RANGE = '192.168.1.0/24'  # Adjust to your network
+# ESP32_IP_RANGE = '192.168.1.0/24'  # Adjust to your network
+# ESP32_IP_RANGE = '192.168.43.0/24'  # Adjust to your network
+ESP32_IP_RANGE = '192.168.4.0/24'  # Adjust to your network
 
 # ESP32 timeout settings (seconds)
 ESP32_TIMEOUT = 30  # How long to wait for ESP32 data before considering it offline

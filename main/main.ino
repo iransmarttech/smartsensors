@@ -8,7 +8,6 @@ void setup() {
     delay(3000);
     
     DEBUG_PRINTLN("Air Quality Monitor");
-    DEBUG_PRINTLN("ZE40 TVOC + ZPHS01B Air Quality + MR007 Combustible + ME4-SO2");
     DEBUG_PRINTLN("=============================================================");
 
     // Initialize shared data FIRST - this creates the mutex

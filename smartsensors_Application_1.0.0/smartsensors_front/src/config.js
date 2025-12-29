@@ -21,8 +21,9 @@
 export const API_CONFIG = {
   // Base URL for Django backend
   // When accessing React from 192.168.1.4:5173, use same IP for API
-  BASE_URL: 'http://192.168.1.4:8000',  // Your laptop's Django server
-  
+  // BASE_URL: 'http://192.168.1.4:8000',  // Your laptop's Django server
+  BASE_URL: 'http://192.168.4.2:8000',  // Your laptop's wifi IP
+
   // Alternative configurations (uncomment as needed):
   // BASE_URL: 'http://localhost:8000',              // Local development
   // BASE_URL: 'http://your-domain.com',             // Production domain

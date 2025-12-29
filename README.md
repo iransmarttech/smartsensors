@@ -235,14 +235,5 @@ Comprehensive documentation is provided for all aspects of the system:
 - Check for HTTP errors in Django logs
 - Verify firewall allows traffic between board and server
 
-## License
 
-[Specify appropriate license]
 
-## Support
-
-For questions or issues:
-1. Check relevant documentation files
-2. Review serial output from ESP32 for error messages
-3. Check Django logs for API errors
-4. Verify network connectivity between components

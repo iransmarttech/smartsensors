@@ -6,6 +6,10 @@
 #include <Ethernet.h>
 #include <EthernetClient.h>
 
+#ifdef WIFI_FALLBACK_ENABLED
+#include <WiFi.h>
+#endif
+
 String DjangoClient::serverURL = "";
 unsigned long DjangoClient::lastSendTime = 0;
 
@@ -39,14 +43,31 @@ bool DjangoClient::sendHTTPPOST(const String& url, const String& payload) {
     }
     
     // Parse host string to IP address
-    // For W5500, we need to handle IP address directly or use the WIZnet DNS
     IPAddress serverIP;
     if (!serverIP.fromString(host)) {
-        // If it's not a simple IP address, log and fail
-        // (W5500 doesn't have simple DNS resolution)
-        DEBUG_PRINTLN("✗ Host must be an IP address (DNS not available for W5500): " + host);
-        DEBUG_PRINTLN("  Edit credentials.h and set DJANGO_SERVER_URL to your server's IP");
-        return false;
+        // Try WiFi DNS resolution if available
+        #ifdef WIFI_FALLBACK_ENABLED
+        if (networkManager.isWifiActive() || networkManager.isAPActive()) {
+            DEBUG_PRINT("Attempting DNS resolution for: ");
+            DEBUG_PRINTLN(host);
+            IPAddress resolvedIP;
+            int dnsResult = WiFi.hostByName(host.c_str(), resolvedIP);
+            if (dnsResult == 1) {
+                serverIP = resolvedIP;
+                DEBUG_PRINT("✓ Resolved to: ");
+                DEBUG_PRINTLN(serverIP);
+            } else {
+                DEBUG_PRINTLN("✗ DNS resolution failed for: " + host);
+                return false;
+            }
+        } else
+        #endif
+        {
+            // W5500 requires IP address
+            DEBUG_PRINTLN("✗ Host must be an IP address (DNS not available for W5500): " + host);
+            DEBUG_PRINTLN("  Edit credentials.h and set DJANGO_SERVER_URL to your server's IP");
+            return false;
+        }
     }
     
     DEBUG_PRINT("✓ Connecting to ");
@@ -54,79 +75,162 @@ bool DjangoClient::sendHTTPPOST(const String& url, const String& payload) {
     DEBUG_PRINT(":");
     DEBUG_PRINTLN(port);
     
-    // Create socket and connect
-    EthernetClient client;
+    // Create appropriate client based on active network
     unsigned long connectStart = millis();
+    bool connected = false;
     
-    if (!client.connect(serverIP, port)) {
-        DEBUG_PRINTLN("✗ Failed to connect to server");
-        return false;
-    }
-    
-    unsigned long connectTime = millis() - connectStart;
-    DEBUG_PRINT("✓ Connected in ");
-    DEBUG_PRINT(connectTime);
-    DEBUG_PRINTLN("ms");
-    
-    // Build HTTP POST request
-    String httpRequest = "POST " + path + " HTTP/1.1\r\n";
-    httpRequest += "Host: " + host + "\r\n";
-    httpRequest += "Content-Type: application/json\r\n";
-    httpRequest += "Content-Length: " + String(payload.length()) + "\r\n";
-    httpRequest += "Connection: close\r\n";
-    httpRequest += "\r\n";
-    httpRequest += payload;
-    
-    // Send request
-    client.print(httpRequest);
-    client.flush();
-    
-    DEBUG_PRINTLN("✓ Request sent, waiting for response...");
-    
-    // Read response
-    unsigned long responseStart = millis();
-    String response = "";
-    int httpStatusCode = 0;
-    bool headersParsed = false;
-    
-    unsigned long timeout = 10000;  // 10 second timeout
-    while (client.connected() && (millis() - responseStart < timeout)) {
-        if (client.available()) {
-            char c = client.read();
-            response += c;
-            
-            // Parse status line: "HTTP/1.1 200 OK\r\n"
-            if (!headersParsed && response.indexOf("\r\n\r\n") != -1) {
-                headersParsed = true;
-                
-                // Extract status code
-                int statusStart = response.indexOf(' ') + 1;
-                int statusEnd = response.indexOf(' ', statusStart);
-                String statusStr = response.substring(statusStart, statusEnd);
-                httpStatusCode = statusStr.toInt();
-                
-                DEBUG_PRINT("✓ HTTP Status: ");
-                DEBUG_PRINTLN(httpStatusCode);
-                
-                // For success codes, we can return early
-                if (httpStatusCode >= 200 && httpStatusCode < 300) {
-                    client.stop();
-                    return true;
-                }
-            }
-        } else {
-            vTaskDelay(pdMS_TO_TICKS(10));
+    #ifdef ETHERNET_ENABLED
+    if (networkManager.isEthernetActive()) {
+        EthernetClient client;
+        connected = client.connect(serverIP, port);
+        
+        if (!connected) {
+            DEBUG_PRINTLN("✗ Failed to connect to server via Ethernet");
+            return false;
         }
+        
+        unsigned long connectTime = millis() - connectStart;
+        DEBUG_PRINT("✓ Connected in ");
+        DEBUG_PRINT(connectTime);
+        DEBUG_PRINTLN("ms");
+        
+        // Build HTTP POST request
+        String httpRequest = "POST " + path + " HTTP/1.1\r\n";
+        httpRequest += "Host: " + host + "\r\n";
+        httpRequest += "Content-Type: application/json\r\n";
+        httpRequest += "Content-Length: " + String(payload.length()) + "\r\n";
+        httpRequest += "Connection: close\r\n";
+        httpRequest += "\r\n";
+        httpRequest += payload;
+        
+        // Send request
+        client.print(httpRequest);
+        client.flush();
+        
+        DEBUG_PRINTLN("✓ Request sent, waiting for response...");
+        
+        // Read response
+        unsigned long responseStart = millis();
+        String response = "";
+        int httpStatusCode = 0;
+        bool headersParsed = false;
+        
+        unsigned long timeout = 10000;  // 10 second timeout
+        while (client.connected() && (millis() - responseStart < timeout)) {
+            if (client.available()) {
+                char c = client.read();
+                response += c;
+                
+                // Parse status line
+                if (!headersParsed && response.indexOf("\r\n\r\n") != -1) {
+                    headersParsed = true;
+                    
+                    int statusStart = response.indexOf(' ') + 1;
+                    int statusEnd = response.indexOf(' ', statusStart);
+                    String statusStr = response.substring(statusStart, statusEnd);
+                    httpStatusCode = statusStr.toInt();
+                    
+                    DEBUG_PRINT("✓ HTTP Status: ");
+                    DEBUG_PRINTLN(httpStatusCode);
+                    
+                    if (httpStatusCode >= 200 && httpStatusCode < 300) {
+                        client.stop();
+                        return true;
+                    }
+                }
+            } else {
+                vTaskDelay(pdMS_TO_TICKS(10));
+            }
+        }
+        
+        client.stop();
+        
+        if (httpStatusCode == 0) {
+            DEBUG_PRINTLN("✗ No valid HTTP response received");
+            return false;
+        }
+        
+        return (httpStatusCode >= 200 && httpStatusCode < 300);
     }
+    #endif
     
-    client.stop();
-    
-    if (httpStatusCode == 0) {
-        DEBUG_PRINTLN("✗ No valid HTTP response received");
-        return false;
+    #ifdef WIFI_FALLBACK_ENABLED
+    if (networkManager.isWifiActive() || networkManager.isAPActive()) {
+        WiFiClient client;
+        connected = client.connect(serverIP, port);
+        
+        if (!connected) {
+            DEBUG_PRINTLN("✗ Failed to connect to server via WiFi");
+            return false;
+        }
+        
+        unsigned long connectTime = millis() - connectStart;
+        DEBUG_PRINT("✓ Connected in ");
+        DEBUG_PRINT(connectTime);
+        DEBUG_PRINTLN("ms");
+        
+        // Build HTTP POST request
+        String httpRequest = "POST " + path + " HTTP/1.1\r\n";
+        httpRequest += "Host: " + host + "\r\n";
+        httpRequest += "Content-Type: application/json\r\n";
+        httpRequest += "Content-Length: " + String(payload.length()) + "\r\n";
+        httpRequest += "Connection: close\r\n";
+        httpRequest += "\r\n";
+        httpRequest += payload;
+        
+        // Send request
+        client.print(httpRequest);
+        client.flush();
+        
+        DEBUG_PRINTLN("✓ Request sent, waiting for response...");
+        
+        // Read response
+        unsigned long responseStart = millis();
+        String response = "";
+        int httpStatusCode = 0;
+        bool headersParsed = false;
+        
+        unsigned long timeout = 10000;  // 10 second timeout
+        while (client.connected() && (millis() - responseStart < timeout)) {
+            if (client.available()) {
+                char c = client.read();
+                response += c;
+                
+                // Parse status line
+                if (!headersParsed && response.indexOf("\r\n\r\n") != -1) {
+                    headersParsed = true;
+                    
+                    int statusStart = response.indexOf(' ') + 1;
+                    int statusEnd = response.indexOf(' ', statusStart);
+                    String statusStr = response.substring(statusStart, statusEnd);
+                    httpStatusCode = statusStr.toInt();
+                    
+                    DEBUG_PRINT("✓ HTTP Status: ");
+                    DEBUG_PRINTLN(httpStatusCode);
+                    
+                    if (httpStatusCode >= 200 && httpStatusCode < 300) {
+                        client.stop();
+                        return true;
+                    }
+                }
+            } else {
+                vTaskDelay(pdMS_TO_TICKS(10));
+            }
+        }
+        
+        client.stop();
+        
+        if (httpStatusCode == 0) {
+            DEBUG_PRINTLN("✗ No valid HTTP response received");
+            return false;
+        }
+        
+        return (httpStatusCode >= 200 && httpStatusCode < 300);
     }
+    #endif
     
-    return (httpStatusCode >= 200 && httpStatusCode < 300);
+    DEBUG_PRINTLN("✗ No active network connection");
+    return false;
 }
 
 void DjangoClient::init() {

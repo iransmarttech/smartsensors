@@ -398,6 +398,20 @@ void SensorWebServer::init() {
         DEBUG_PRINTLN("✗ ERROR: Failed to allocate server memory");
     }
     #endif
+    
+    #ifdef WIFI_FALLBACK_ENABLED
+    // Initialize WiFi server if not already initialized
+    if (wifiServer == nullptr) {
+        void* wifiServerMem = malloc(sizeof(WiFiServer));
+        if (wifiServerMem != nullptr) {
+            wifiServer = new (wifiServerMem) WiFiServer(80);
+            wifiServer->begin();
+            DEBUG_PRINTLN("✓ WiFi HTTP server started on port 80");
+        } else {
+            DEBUG_PRINTLN("✗ ERROR: Failed to allocate WiFi server memory");
+        }
+    }
+    #endif
 }
 
 void SensorWebServer::handleEthernetClient() {

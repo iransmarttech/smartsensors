@@ -24,7 +24,7 @@ const char* API_ACCESS_TOKEN = "generate-random-32-char-token-here";
 // Django Backend Server URL
 // Set to your laptop/Django server IP address
 // For auto-detection to work reliably, use the actual IP (e.g., 192.168.1.4)
-const char* DJANGO_SERVER_URL = "http://192.168.1.4:8000/api/sensors";
+const char* DJANGO_SERVER_URL = "http://192.168.4.2:8000/api/sensors";
 
 // mDNS Hostname
 const char* DEVICE_HOSTNAME = "smartSensor";
