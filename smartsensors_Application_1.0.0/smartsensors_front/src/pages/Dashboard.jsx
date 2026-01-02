@@ -58,7 +58,7 @@ function Dashboard() {
                 <Wind className="w-5 h-5 text-blue-400" />
               </div>
               <div className="text-right flex-1">
-                <p className="text-sm text-white font-Vazirmatn">سنسور ذرات معلق (ZPH01B)</p>
+                <p className="text-sm text-white font-Vazirmatn">سنسور ذرات معلق </p>
                 <p className="font-Vazirmatn-semibold text-white text-sm">
                   اندازه‌گیری PM1، PM2.5، PM10 - سنجش آلودگی هوا
                 </p>
@@ -71,7 +71,7 @@ function Dashboard() {
                 <Flame className="w-5 h-5 text-red-400" />
               </div>
               <div className="text-right flex-1">
-                <p className="text-sm text-white font-Vazirmatn">سنسور گاز قابل اشتعال (MR007)</p>
+                <p className="text-sm text-white font-Vazirmatn">سنسور گاز قابل اشتعال </p>
                 <p className="font-Vazirmatn-semibold text-white text-sm">
                   تشخیص گازهای قابل اشتعال - ایمنی صنعتی
                 </p>
@@ -84,7 +84,7 @@ function Dashboard() {
                 <AlertTriangle className="w-5 h-5 text-yellow-400" />
               </div>
               <div className="text-right flex-1">
-                <p className="text-sm text-white font-Vazirmatn">سنسور دی اکسید گوگرد (ME4-SO2)</p>
+                <p className="text-sm text-white font-Vazirmatn">سنسور دی اکسید گوگرد </p>
                 <p className="font-Vazirmatn-semibold text-white text-sm">
                   اندازه‌گیری SO₂ - پایش آلاینده‌های صنعتی
                 </p>
@@ -97,7 +97,7 @@ function Dashboard() {
                 <Eye className="w-5 h-5 text-green-400" />
               </div>
               <div className="text-right flex-1">
-                <p className="text-sm text-white font-Vazirmatn">سنسور ترکیبات آلی (ZE40)</p>
+                <p className="text-sm text-white font-Vazirmatn">سنسور ترکیبات آلی </p>
                 <p className="font-Vazirmatn-semibold text-white text-sm">
                   اندازه‌گیری TVOC - سنجش کیفیت هوای داخلی
                 </p>
@@ -124,6 +124,8 @@ function Dashboard() {
       muted
       loop
       playsInline
+      controlsList="nofullscreen nodownload"
+      disablePictureInPicture
     >
       <source src="/videos/sensors.mp4" type="video/mp4" />
       <source src="/videos/sensors.webm" type="video/webm" />

@@ -86,41 +86,9 @@ function GasSensorsPanel() {
 
   // تعریف سنسورها به صورت داینامیک
   const sensorGroups = [
-    {
-      id: "mr007",
-      title: "سنسور MR007",
-      subtitle: "گازهای قابل اشتعال",
-      icon: "Flame",
-      iconColor: "red",
-      sensors: [
         {
-          title: "ولتاژ",
-          value: mr007Data?.voltage || 0,
-          unit: "V",
-          icon: "zap",
-          color: "#59ac77",
-          precision: 1,
-        },
-        {
-          title: "مقدار خام",
-          value: mr007Data?.rawValue || 0,
-          unit: "",
-          icon: "gauge",
-          color: "#59ac77",
-        },
-        {
-          title: "غلظت LEL",
-          value: mr007Data?.lel_concentration || 0,
-          unit: "%",
-          icon: "activity",
-          color: "#59ac77",
-          precision: 1,
-        },
-      ],
-    },
-    {
       id: "me4so2",
-      title: "سنسور ME4SO2",
+      title: "سنسور دی اکسید گوگرد",
       subtitle: "دی اکسید گوگرد",
       icon: "AlertTriangle",
       iconColor: "yellow",
@@ -148,38 +116,39 @@ function GasSensorsPanel() {
           color: "#59ac77",
           precision: 1,
         },
+      ],
+    },
+    {
+      id: "mr007",
+      title: "سنسور گازهای قابل اشتعال",
+      subtitle: "گازهای قابل اشتعال",
+      icon: "Flame",
+      iconColor: "red",
+      sensors: [
         {
-          title: "غلظت SO2",
-          value: me4so2Data?.so2_concentration || 0,
-          unit: "ppm",
-          icon: "alert",
+          title: "ولتاژ",
+          value: mr007Data?.voltage || 0,
+          unit: "V",
+          icon: "zap",
           color: "#59ac77",
           precision: 1,
+        },
+        {
+          title: "مقدار خام",
+          value: mr007Data?.rawValue || 0,
+          unit: "",
+          icon: "gauge",
+          color: "#59ac77",
         },
       ],
     },
     {
       id: "ze40",
-      title: "سنسور ZE40",
+      title: "سنسور ترکیبات آلی",
       subtitle: "ترکیبات آلی فرار",
       icon: "Eye",
       iconColor: "blue",
       sensors: [
-        {
-          title: "TVOC (ppb)",
-          value: ze40Data?.tvoc_ppb || 0,
-          unit: "ppb",
-          icon: "chart",
-          color: "#59ac77",
-        },
-        {
-          title: "TVOC (ppm)",
-          value: ze40Data?.tvoc_ppm || 0,
-          unit: "ppm",
-          icon: "chart",
-          color: "#59ac77",
-          precision: 2,
-        },
         {
           title: "ولتاژ DAC",
           value: ze40Data?.dac_voltage || 0,

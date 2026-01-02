@@ -13,12 +13,14 @@ import {
   Sun,
   Cloud,
   Eye,
+  Flame,
 } from "lucide-react";
 
 function SensorCardWithChart({ title, value, unit, icon, chartData }) {
   const iconComponents = {
     activity: <Activity className="w-5 h-5 text-secondary" />,
     alert: <AlertTriangle className="w-5 h-5 text-secondary" />,
+    "alert-triangle": <AlertTriangle className="w-5 h-5 text-secondary" />,
     thermometer: <Thermometer className="w-5 h-5 text-secondary" />,
     droplet: <Droplet className="w-5 h-5 text-secondary" />,
     gauge: <Gauge className="w-5 h-5 text-secondary" />,
@@ -29,14 +31,18 @@ function SensorCardWithChart({ title, value, unit, icon, chartData }) {
     sun: <Sun className="w-5 h-5 text-secondary" />,
     cloud: <Cloud className="w-5 h-5 text-secondary" />,
     eye: <Eye className="w-5 h-5 text-secondary" />,
+    flame: <Flame className="w-5 h-5 text-secondary" />,
   };
 
+  // اگر آیکون تعریف نشده، از alert استفاده کن
+  const IconComponent = iconComponents[icon] || iconComponents.alert;
+
   return (
-    <div className="bg-box rounded-lg shadow-lg   overflow-hidden">
+    <div className="bg-box rounded-lg shadow-lg overflow-hidden">
       {/* هدر کارت */}
-      <div className="flex items-center justify-between p-4  ">
+      <div className="flex items-center justify-between p-4">
         <div className="flex items-center">
-          {iconComponents[icon]}
+          {IconComponent}
           <h3 className="text-sm font-medium text-white mr-2">{title}</h3>
         </div>
         <div className="text-right">
